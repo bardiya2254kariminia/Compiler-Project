@@ -49,22 +49,26 @@ void Lexer::next(Token &token)
         Token::TokenKind kind;
         if (Name == "int")
             kind = Token::KW_int;
+        else if (Name == "bool")
+            kind = Token::KW_bool;
         else if (Name == "if")
             kind = Token::KW_if;
-        else if (Name == "elif")
-            kind = Token::KW_elif;
         else if (Name == "else")
             kind = Token::KW_else;
-        else if (Name == "begin")
-            kind = Token::KW_begin;
-        else if (Name == "end")
-            kind = Token::KW_end;
-        else if (Name == "loopc")
-            kind = Token::KW_loopc;
+        else if (Name == "true")
+            kind = Token::KW_true;
+        else if (Name == "false")
+            kind = Token::KW_false;
+        else if (Name == "while")
+            kind = Token::KW_while;
+        else if (Name == "for")
+            kind = Token::KW_for;
         else if (Name == "and")
             kind = Token::KW_and;
         else if (Name == "or")
             kind = Token::KW_or;
+        else if (Name == "print")
+            kind = Token::KW_print;
         else
             kind = Token::ident;
         // generate the token
@@ -97,14 +101,16 @@ void Lexer::next(Token &token)
             kind = Token::star_assign;
         else if (Sign == "/=")
             kind = Token::slash_assign;
-        else if (Sign == "%=")
-            kind = Token::mod_assign;
-        else if (Sign == "^=")
-            kind = Token::exp_assign;
         else if (Sign == "==")
             kind = Token::eq;
         else if (Sign == "!=")
             kind = Token::neq;
+        else if (Sign == "++")
+            kind = Token::plus_plus;
+        else if (Sign == "--")
+            kind = Token::minus_minus;
+        else if (Sign == "/*")
+            kind = Token::comment;
         else if (Sign == ">")
             kind = Token::gt;
         else if (Sign == "<")
@@ -143,7 +149,8 @@ void Lexer::next(Token &token)
             CASE('(', Token::l_paren);
             CASE(')', Token::r_paren);
             CASE(';', Token::semicolon);
-            CASE(':', Token::colon);
+            CASE('{', Token::l_brace);
+            CASE('}', Token::r_brace);
             CASE(',', Token::comma);
 #undef CASE
         default:

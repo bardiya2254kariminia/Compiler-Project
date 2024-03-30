@@ -52,7 +52,8 @@ public:
         KW_while,       // while
         KW_for,         // for
         KW_and,         // and
-        KW_or           // or
+        KW_or,          // or
+        KW_print        // print
     };
 
 private:
