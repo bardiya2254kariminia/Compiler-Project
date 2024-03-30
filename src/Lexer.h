@@ -22,17 +22,17 @@ public:
         plus_assign,    // +=
         star_assign,    // *=
         slash_assign,   // /=
-        mod_assign,     // %=
-        exp_assign,     // ^=
         eq,             // ==
         neq,            // !=
         gt,             // >
         lt,             // <
         gte,            // >=
         lte,            // <=
+        plus_plus,      // ++
+        minus_minus,    // --
+        comment,        // /*
         comma,          // ,
         semicolon,      // ;
-        colon,          // :
         plus,           // +
         minus,          // -
         star,           // *
@@ -41,13 +41,16 @@ public:
         exp,            // ^
         l_paren,        // (
         r_paren,        // )
+        l_brace,        // {
+        r_brace,        // }
         KW_int,         // int
+        KW_bool,        // bool
+        KW_true,        // true
+        KW_false,       // false
         KW_if,          // if
-        KW_elif,        // elif
         KW_else,        // else
-        KW_begin,       // begin
-        KW_end,         // end
-        KW_loopc,       // loopc
+        KW_while,       // while
+        KW_for,         // for
         KW_and,         // and
         KW_or           // or
     };
