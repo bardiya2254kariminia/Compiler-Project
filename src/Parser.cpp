@@ -20,7 +20,16 @@ Program *Parser::parseProgram()
         {
         case Token::KW_int:
             Declaration *d;
-            d = parseDec();
+            d = parseIntDec();
+            if (d)
+                data.push_back(d);
+            else {
+                goto _error;
+            }
+            break;
+        case Token::KW_bool:
+            Declaration *d;
+            d = parseBoolDec();
             if (d)
                 data.push_back(d);
             else {
@@ -51,9 +60,27 @@ Program *Parser::parseProgram()
                 goto _error;
             }
             break;
-        case Token::KW_loopc:
-            IterStmt *l;
-            l = parseIter();
+        case Token::KW_while:
+            WhileStmt *l;
+            l = parseWhile();
+            if (l)
+                data.push_back(l);
+            else {
+                goto _error;
+            }
+            break;
+        case Token::KW_for:
+            ForStmt *l;
+            l = parseWhile();
+            if (l)
+                data.push_back(l);
+            else {
+                goto _error;
+            }
+            break;
+        case Token::KW_print:
+            PrintStmt *l;
+            l = parsePrint();
             if (l)
                 data.push_back(l);
             else {
@@ -76,7 +103,7 @@ _error:
     return nullptr;
 }
 
-Declaration *Parser::parseDec()
+Declaration *Parser::parseIntDec()
 {
     Expr *E;
     llvm::SmallVector<llvm::StringRef, 8> Vars;
@@ -152,6 +179,85 @@ _error:
     return nullptr;
 }
 
+
+Declaration *Parser::parseBoolDec()
+{
+    Expr *E;
+    llvm::SmallVector<llvm::StringRef, 8> Vars;
+    llvm::SmallVector<Expr *, 8> Values;
+    int count = 1;
+    
+    if (expect(Token::KW_bool)){
+        goto _error;
+    }
+
+    advance();
+    
+    if (expect(Token::ident)){
+        goto _error;
+    }
+
+    Vars.push_back(Tok.getText());
+    advance();
+
+    
+    while (Tok.is(Token::comma))
+    {
+        advance();
+        if (expect(Token::ident)){
+            goto _error;
+        }
+            
+        Vars.push_back(Tok.getText());
+        count++;
+        advance();
+    }
+
+    if (Tok.is(Token::assign))
+    {
+        advance();
+        E = parseLogic();
+        if(E){
+            Values.push_back(E);
+            count--; 
+        }
+        else{
+            goto _error;
+        }
+        
+        while (Tok.is(Token::comma))
+        {   
+            if (count == 0){
+                error();
+                goto _error;
+            }
+
+            advance();
+            E = parseLogic();
+            if(E){
+                Values.push_back(E);
+                count--; 
+            }
+            else{
+                goto _error;
+            }
+        }
+    }
+
+    if (expect(Token::semicolon)){
+        goto _error;
+    }
+
+
+    return new Declaration(Vars, Values);
+_error: 
+    while (Tok.getKind() != Token::eoi)
+        advance();
+    return nullptr;
+}
+
+
+
 Assignment *Parser::parseAssign()
 {
     Expr *E;
@@ -163,10 +269,18 @@ Assignment *Parser::parseAssign()
     {
         goto _error;
     }
-
+    Token prev_Tok = Tok;
     if (Tok.is(Token::assign))
     {
         AK = Assignment::Assign;
+        advance();
+        E = parseLogic();   // check if expr is logical
+        if(E){
+            return new Assignment(F, E, AK);
+        }
+        else{
+            Tok = prev_Tok;
+        }
     }
     else if (Tok.is(Token::plus_assign))
     {
@@ -184,21 +298,13 @@ Assignment *Parser::parseAssign()
     {
         AK = Assignment::Slash_assign;
     }
-    else if (Tok.is(Token::mod_assign))
-    {
-        AK = Assignment::Mod_assign;
-    }
-    else if (Tok.is(Token::exp_assign))
-    {
-        AK = Assignment::Exp_assign;
-    }
     else
     {
         error();
         goto _error;
     }
     advance();
-    E = parseExpr();
+    E = parseExpr();    // first check if expr is mathematical
     if(E){
         return new Assignment(F, E, AK);
     }
@@ -326,8 +432,42 @@ Expr *Parser::parseFinal()
         break;
     case Token::ident:
         Res = new Final(Final::Ident, Tok.getText());
+        Token prev_tok = Tok;
         advance();
-        break;
+        if (Tok.getKind() == Token::plus_plus){
+            Res = new UnaryOp(UnaryOp::Plus_plus, prev_tok.getText());
+            break;
+        }
+        else if(Tok.getKind() == Token::minus_minus){
+            Res = new UnaryOp(UnaryOp::Minus_minus, prev_tok.getText());
+            break;
+        }
+        else{
+            break;
+        }
+    case Token::plus:
+        advance();
+        if(Tok.getKind() == Token::number){
+            Res = new SignedNumber(SignedNumber::Plus, Tok.getText());
+            break;
+        }
+        goto _error;
+    case Token::minus:
+        advance();
+        if (Tok.getKind == Token::number){
+            Res = new SignedNumber(SignedNumber::Minus, Tok.getText());
+            break;
+        }
+        else if(Tok.getKind == Token::l_paren){
+            advance();
+            Expr *math_expr = parseExpr();
+            if(math_expr == nullptr)
+                goto _error;
+            Res = new NegExpr(math_expr);
+            if (!consume(Token::r_paren))
+                break;
+        }
+        goto _error;
     case Token::l_paren:
         advance();
         Res = parseExpr();
@@ -362,10 +502,22 @@ Logic *Parser::parseComparison()
             goto _error;
     }
     else {
-        Expr *Left = parseExpr();
-        if(Left == nullptr){
-            goto _error;
+        if(Tok.is(Token::true)){
+            Res = new Comparison(nullptr, nullptr, Comparison::True, Tok.getText());
+            return Res;
         }
+        else if(Tok.is(Token::false)){
+            Res = new Comparison(nullptr, nullptr, Comparison::False, Tok.getText());
+            return Res;
+        }
+        else if(Tok.is(Token::ident)){
+            Res = new Comparison(nullptr, nullptr, Comparison::Ident, Tok.getText());
+            return Res;
+        }
+        Expr *Left = parseExpr();
+        if(Left == nullptr)
+            goto _error;
+
         Comparison::Operator Op;
             if (Tok.is(Token::eq))
                 Op = Comparison::Equal;
@@ -390,7 +542,7 @@ Logic *Parser::parseComparison()
                 goto _error;
             }
             
-            Res = new Comparison(Left, Right, Op);
+            Res = new Comparison(Left, Right, Op, Tok.getText());
     }
     
     return Res;

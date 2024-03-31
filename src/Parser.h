@@ -41,7 +41,8 @@ class Parser
     }
 
     Program *parseProgram();
-    Declaration *parseDec();
+    Declaration *parseIntDec();
+    Declaration *parseBoolDec();
     Assignment *parseAssign();
     Expr *parseExpr();
     Expr *parseTerm();
@@ -50,7 +51,9 @@ class Parser
     Logic *parseLogic();
     Logic *parseComparison();
     IfStmt *parseIf();
-    IterStmt *parseIter();
+    WhileStmt *parseWhile();
+    ForStmt *parseFor();
+    PrintStmt *parsePrint();
 
 public:
     // initializes all members and retrieves the first token

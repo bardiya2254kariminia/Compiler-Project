@@ -11,6 +11,9 @@ class Program;
 class Declaration;
 class Final;
 class BinaryOp;
+class UnaryOp;
+class SignedNumber;
+class NegExpr;
 class Assignment;
 class Logic;
 class Comparison;
@@ -30,6 +33,9 @@ public:
   virtual void visit(Program &) {}           // Visit the group of expressions node
   virtual void visit(Final &) = 0;           // Visit the Final node
   virtual void visit(BinaryOp &) = 0;        // Visit the binary operation node
+  virtual void visit(UnaryOp &) = 0;
+  virtual void visit(SignedNumber &) = 0;
+  virtual void visit(NegExpr &) = 0;
   virtual void visit(Assignment &) = 0;      // Visit the assignment expression node
   virtual void visit(Declaration &) = 0;     // Visit the variable declaration node
   virtual void visit(Logic &) {}             // Visit the Logic node
@@ -112,18 +118,20 @@ public:
 };
 
 
-// Final class represents a Final in the AST (either an identifier or a number)
+// Final class represents a Final in the AST (either an identifier or a number or true or false)
 class Final : public Expr
 {
 public:
   enum ValueKind
   {
     Ident,
-    Number
+    Number,
+    True,
+    False
   };
 
 private:
-  ValueKind Kind;                            // Stores the kind of Final (identifier or number)
+  ValueKind Kind;                            // Stores the kind of Final (identifier or number or true or false)
   llvm::StringRef Val;                       // Stores the value of the Final
 
 public:
@@ -173,6 +181,76 @@ public:
   }
 };
 
+// naryOp class represents a unary operation in the AST (plus plus, minus minus)
+class UnaryOp : public Expr
+{
+public:
+  enum Operator
+  {
+    Plus_plus,
+    Minus_minus
+  };
+
+private:
+  llvm::StringRef Ident;                      
+  Operator Op;                              // Operator of the unary operation
+
+public:
+  UnaryOp(Operator Op, llvm::StringRef I) : Op(Op), Ident(I) {}
+
+  llvm::StringRef getIdent() { return Ident; }
+
+  Operator getOperator() { return Op; }
+
+  virtual void accept(ASTVisitor &V) override
+  {
+    V.visit(*this);
+  }
+};
+
+class SignedNumber : public Expr
+{
+public:
+  enum Sign
+  {
+    Plus,
+    Minus
+  };
+
+private:
+  llvm::StringRef Value;                              
+  Sign s;                              
+
+public:
+  SignedNumber(Sign S, llvm::StringRef V) : s(S), Value(V) {}
+
+  llvm::StringRef getValue() { return Value; }
+
+  Sign getSign() { return s; }
+
+  virtual void accept(ASTVisitor &V) override
+  {
+    V.visit(*this);
+  }
+};
+
+class NegExpr : public Expr
+{
+
+private:
+  Expr *expr;                              
+
+public:
+  SignedNumber(Expr *E) : expr(E) {}
+
+  Expr *getExpr() { return expr; }
+
+  virtual void accept(ASTVisitor &V) override
+  {
+    V.visit(*this);
+  }
+};
+
 // Assignment class represents an assignment expression in the AST
 class Assignment : public Program
 {
@@ -184,8 +262,6 @@ class Assignment : public Program
     Plus_assign,    // +=
     Star_assign,    // *=
     Slash_assign,   // /=
-    Mod_assign,     // %=
-    Exp_assign      // ^=
 };
 private:
   Final *Left;                             // Left-hand side Final (identifier)
@@ -218,22 +294,28 @@ class Comparison : public Logic
     Greater,        // >
     Less,           // <
     Greater_equal,  // >=
-    Less_equal      // <=
+    Less_equal,      // <=
+    True,           //CHECK???
+    False,
+    Ident
   };
     
 private:
   Expr *Left;                                // Left-hand side expression
   Expr *Right;                               // Right-hand side expression
   Operator Op;                               // Kind of assignment
+  llvm::StringRef Value;                     // (if there is no op, it contains true, false or ident)
 
 public:
-  Comparison(Expr *L, Expr *R, Operator Op) : Left(L), Right(R), Op(Op) {}
+  Comparison(Expr *L, Expr *R, Operator Opm ,llvm::StringRef V) : Left(L), Right(R), Op(Op), Value(V) {}
 
   Expr *getLeft() { return Left; }
 
   Expr *getRight() { return Right; }
 
   Operator getOperator() { return Op; }
+
+  llvm::StringRef getValue() { return Value; }
 
   virtual void accept(ASTVisitor &V) override
   {
@@ -252,16 +334,16 @@ class LogicalExpr : public Logic
   };
 
 private:
-  Logic *Left;                                // Left-hand side expression
-  Logic *Right;                               // Right-hand side expression
+  Comparison *Left;                                // Left-hand side expression
+  Comparison *Right;                               // Right-hand side expression
   Operator Op;                                     // Kind of assignment
 
 public:
-  LogicalExpr(Logic *L, Logic *R, Operator Op) : Left(L), Right(R), Op(Op) {}
+  LogicalExpr(Comparison *L, Comparison *R, Operator Op) : Left(L), Right(R), Op(Op) {}
 
-  Logic *getLeft() { return Left; }
+  Comparison *getLeft() { return Left; }
 
-  Logic *getRight() { return Right; }
+  Comparison *getRight() { return Right; }
 
   Operator getOperator() { return Op; }
 
