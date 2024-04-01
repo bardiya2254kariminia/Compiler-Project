@@ -274,9 +274,10 @@ Assignment *Parser::parseAssign()
     {
         AK = Assignment::Assign;
         advance();
-        E = parseLogic();   // check if expr is logical
-        if(E){
-            return new Assignment(F, E, AK);
+        LogicalExpr *L;
+        L = parseLogic();   // check if expr is logical
+        if(L){
+            return new Assignment(F, nullptr, AK, L);
         }
         else{
             Tok = prev_Tok;
@@ -304,9 +305,9 @@ Assignment *Parser::parseAssign()
         goto _error;
     }
     advance();
-    E = parseExpr();    // first check if expr is mathematical
+    E = parseExpr();    // check for mathematical expr
     if(E){
-        return new Assignment(F, E, AK);
+        return new Assignment(F, E, AK, nullptr);
     }
     else{
         goto _error;
@@ -436,19 +437,21 @@ Expr *Parser::parseFinal()
         advance();
         if (Tok.getKind() == Token::plus_plus){
             Res = new UnaryOp(UnaryOp::Plus_plus, prev_tok.getText());
+            advance();
             break;
         }
         else if(Tok.getKind() == Token::minus_minus){
             Res = new UnaryOp(UnaryOp::Minus_minus, prev_tok.getText());
+            advance();
             break;
         }
-        else{
-            break;
-        }
+        break;
+        
     case Token::plus:
         advance();
         if(Tok.getKind() == Token::number){
             Res = new SignedNumber(SignedNumber::Plus, Tok.getText());
+            advance();
             break;
         }
         goto _error;
@@ -456,6 +459,7 @@ Expr *Parser::parseFinal()
         advance();
         if (Tok.getKind == Token::number){
             Res = new SignedNumber(SignedNumber::Minus, Tok.getText());
+            advance();
             break;
         }
         else if(Tok.getKind == Token::l_paren){
@@ -476,6 +480,8 @@ Expr *Parser::parseFinal()
         }
         if (!consume(Token::r_paren))
             break;
+        else
+            goto _error;        //CHECK??
     default:
         error();
         goto _error;
@@ -504,14 +510,17 @@ Logic *Parser::parseComparison()
     else {
         if(Tok.is(Token::true)){
             Res = new Comparison(nullptr, nullptr, Comparison::True, Tok.getText());
+            advance();
             return Res;
         }
         else if(Tok.is(Token::false)){
             Res = new Comparison(nullptr, nullptr, Comparison::False, Tok.getText());
+            advance();
             return Res;
         }
         else if(Tok.is(Token::ident)){
             Res = new Comparison(nullptr, nullptr, Comparison::Ident, Tok.getText());
+            advance();
             return Res;
         }
         Expr *Left = parseExpr();
@@ -736,7 +745,7 @@ _error:
     return nullptr;
 }
 
-IterStmt *Parser::parseIter()
+WhileStmt *Parser::parseIter()
 {
     llvm::SmallVector<Assignment *, 8> assignments;
     Logic *Cond;

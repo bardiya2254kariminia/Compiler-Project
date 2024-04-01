@@ -265,15 +265,18 @@ class Assignment : public Program
 };
 private:
   Final *Left;                             // Left-hand side Final (identifier)
-  Expr *Right;                              // Right-hand side expression
-  AssignKind AK;                            // Kind of assignment
+  Expr *RightExpr;                         // Right-hand side expression
+  LogicalExpr *RightLogicExpr;             // Right-hand side logical expression
+  AssignKind AK;                           // Kind of assignment
 
 public:
-  Assignment(Final *L, Expr *R, AssignKind AK) : Left(L), Right(R), AK(AK) {}
+  Assignment(Final *L, Expr *RE, AssignKind AK, LogicalExpr *RL) : Left(L), RightExpr(RE), AK(AK), RightLogicExpr(RL) {}
 
   Final *getLeft() { return Left; }
 
-  Expr *getRight() { return Right; }
+  Expr *getRight() { return RightExpr; }
+
+  LogicalExpr *getRightLogic() { return RightLogicExpr; }
 
   AssignKind getAssignKind() { return AK; }
 
@@ -334,16 +337,16 @@ class LogicalExpr : public Logic
   };
 
 private:
-  Comparison *Left;                                // Left-hand side expression
-  Comparison *Right;                               // Right-hand side expression
-  Operator Op;                                     // Kind of assignment
+  Logic *Left;                                // Left-hand side expression
+  Logic *Right;                               // Right-hand side expression
+  Operator Op;                                // Kind of assignment
 
 public:
-  LogicalExpr(Comparison *L, Comparison *R, Operator Op) : Left(L), Right(R), Op(Op) {}
+  LogicalExpr(Logic *L, Logic *R, Operator Op) : Left(L), Right(R), Op(Op) {}
 
-  Comparison *getLeft() { return Left; }
+  Logic *getLeft() { return Left; }
 
-  Comparison *getRight() { return Right; }
+  Logic *getRight() { return Right; }
 
   Operator getOperator() { return Op; }
 
@@ -412,7 +415,7 @@ public:
   }
 };
 
-class IterStmt : public Program
+class WhileStmt : public Program
 {
 using assignmentsVector = llvm::SmallVector<Assignment *, 8>;
 assignmentsVector assignments;
@@ -421,7 +424,7 @@ private:
   Logic *Cond;
 
 public:
-  IterStmt(Logic *Cond, llvm::SmallVector<Assignment *, 8> assignments) : Cond(Cond), assignments(assignments) {}
+  WhileStmt(Logic *Cond, llvm::SmallVector<Assignment *, 8> assignments) : Cond(Cond), assignments(assignments) {}
 
   Logic *getCond() { return Cond; }
 
