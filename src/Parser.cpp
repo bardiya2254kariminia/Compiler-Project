@@ -37,6 +37,32 @@ Program *Parser::parseProgram()
             }
             break;
         case Token::ident:
+            Token prev_token = Tok;
+            UnaryOp *u;
+            u = parseUnary();
+            if (Tok.is(Token::semicolon))
+            {
+                if (u){
+                    data.push_back(u);
+                    break;
+                }
+                else {
+                    Tok = prev_token;
+                }
+                
+            }
+            else{
+                if (u){
+                    error();
+                    goto _error;
+                }
+                else {
+                    Tok = prev_token;
+                }
+                
+            }
+
+            
             Assignment *a;
             a = parseAssign();
             if (!Tok.is(Token::semicolon))
@@ -71,7 +97,7 @@ Program *Parser::parseProgram()
             break;
         case Token::KW_for:
             ForStmt *l;
-            l = parseWhile();
+            l = parseFor();
             if (l)
                 data.push_back(l);
             else {
@@ -319,6 +345,36 @@ _error:
     return nullptr;
 }
 
+UnaryOp *Parser::parseUnary()
+{
+    UnaryOp* Res = nullptr;
+    llvm::StringRef var;
+
+    if (expect(Token::ident)){
+        goto _error;
+    }
+
+    var = Tok.getText();
+    advance();
+    if (Tok.getKind() == Token::plus_plus){
+        Res = new UnaryOp(UnaryOp::Plus_plus, var);
+    }
+    else if(Tok.getKind() == Token::minus_minus){
+        Res = new UnaryOp(UnaryOp::Minus_minus, var);
+    }
+    else{
+        goto _error;
+    }
+
+    advance();
+
+    return Res;
+
+_error:
+    while (Tok.getKind() != Token::eoi)
+        advance();
+    return nullptr;
+}
 Expr *Parser::parseExpr()
 {
     Expr *Left = parseTerm();

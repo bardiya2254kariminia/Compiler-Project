@@ -19,9 +19,10 @@ class Logic;
 class Comparison;
 class LogicalExpr;
 class IfStmt;
-class IterStmt;
+class WhileStmt;
 class elifStmt;
-
+class ForStmt;
+class PrintStmt;
 
 // ASTVisitor class defines a visitor pattern to traverse the AST
 class ASTVisitor
@@ -42,8 +43,10 @@ public:
   virtual void visit(Comparison &) = 0;      // Visit the Comparison node
   virtual void visit(LogicalExpr &) = 0;     // Visit the LogicalExpr node
   virtual void visit(IfStmt &) = 0;          // Visit the IfStmt node
-  virtual void visit(IterStmt &) = 0;        // Visit the IterStmt node
+  virtual void visit(WhileStmt &) = 0;        // Visit the IterStmt node
   virtual void visit(elifStmt &) = 0;        // Visit the elifStmt node
+  virtual void visit(ForStmt &) = 0;
+  virtual void visit(PrintStmt &) = 0;
 };
 
 // AST class serves as the base class for all AST nodes
@@ -359,13 +362,24 @@ public:
 class elifStmt : public AST
 {
 using assignmentsVector = llvm::SmallVector<Assignment *, 8>;
+using unaryVector = llvm::SmallVector<UnaryOp *, 8>;
+using ifVector = llvm::SmallVector<IfStmt *, 8>;
+using whileVector = llvm::SmallVector<WhileStmt *, 8>;
+using forVector = llvm::SmallVector<ForStmt *, 8>;
+using printVector = llvm::SmallVector<PrintStmt *, 8>;
 assignmentsVector assignments;
+unaryVector unarays;
+ifVector ifs;
+whileVector whiles;
+forVector fors;
+printVector prints;
+
 
 private:
   Logic *Cond;
 
 public:
-  elifStmt(Logic *Cond, llvm::SmallVector<Assignment *, 8> assignments) : Cond(Cond), assignments(assignments) {}
+  elifStmt(Logic *Cond, assignmentsVector assignments) : Cond(Cond), assignments(assignments) {}
 
   Logic *getCond() { return Cond; }
 
@@ -383,9 +397,25 @@ public:
 class IfStmt : public Program
 {
 using assignmentsVector = llvm::SmallVector<Assignment *, 8>;
+using unaryVector = llvm::SmallVector<UnaryOp *, 8>;
+using ifVector = llvm::SmallVector<IfStmt *, 8>;
+using whileVector = llvm::SmallVector<WhileStmt *, 8>;
+using forVector = llvm::SmallVector<ForStmt *, 8>;
+using printVector = llvm::SmallVector<PrintStmt *, 8>;
 using elifVector = llvm::SmallVector<elifStmt *, 8>;
-assignmentsVector ifAssignments;
-assignmentsVector elseAssignments;
+
+assignmentsVector ifassignments;
+unaryVector ifunarays;
+ifVector ififs;
+whileVector ifwhiles;
+forVector iffors;
+printVector ifprints;
+assignmentsVector elseassignments;
+unaryVector elseunarays;
+ifVector elseifs;
+whileVector elsewhiles;
+forVector elsefors;
+printVector elseprints;
 elifVector elifStmts;
 
 

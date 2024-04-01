@@ -44,6 +44,7 @@ class Parser
     Declaration *parseIntDec();
     Declaration *parseBoolDec();
     Assignment *parseAssign();
+    UnaryOp *parseUnary();
     Expr *parseExpr();
     Expr *parseTerm();
     Expr *parseFinal();
