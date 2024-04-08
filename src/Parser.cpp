@@ -19,22 +19,22 @@ Program *Parser::parseProgram()
         switch (Tok.getKind())
         {
         case Token::KW_int:
-            Declaration *d;
+            DeclarationInt *d;
             d = parseIntDec();
             if (d)
                 data.push_back(d);
-            else {
+            else
                 goto _error;
-            }
+                
             break;
         case Token::KW_bool:
-            Declaration *d;
+            DeclarationBool *d;
             d = parseBoolDec();
             if (d)
                 data.push_back(d);
-            else {
+            else
                 goto _error;
-            }
+
             break;
         case Token::ident:
             Token prev_token = Tok;
@@ -42,24 +42,23 @@ Program *Parser::parseProgram()
             u = parseUnary();
             if (Tok.is(Token::semicolon))
             {
-                if (u){
+                if (u)
+                {
                     data.push_back(u);
                     break;
                 }
-                else {
+                else
                     Tok = prev_token;
-                }
-                
             }
-            else{
-                if (u){
+            else
+            {
+                if (u)
+                {
                     error();
                     goto _error;
                 }
-                else {
+                else
                     Tok = prev_token;
-                }
-                
             }
 
             
@@ -73,18 +72,18 @@ Program *Parser::parseProgram()
 
             if (a)
                 data.push_back(a);
-            else {
+            else
                 goto _error;
-            }
+
             break;
         case Token::KW_if:
             IfStmt *i;
             i = parseIf();
             if (i)
                 data.push_back(i);
-            else {
+            else
                 goto _error;
-            }
+            
             break;
         case Token::KW_while:
             WhileStmt *l;
@@ -129,7 +128,7 @@ _error:
     return nullptr;
 }
 
-Declaration *Parser::parseIntDec()
+DeclarationInt *Parser::parseIntDec()
 {
     Expr *E;
     llvm::SmallVector<llvm::StringRef, 8> Vars;
@@ -198,7 +197,7 @@ Declaration *Parser::parseIntDec()
     }
 
 
-    return new Declaration(Vars, Values);
+    return new DeclarationInt(Vars, Values);
 _error: 
     while (Tok.getKind() != Token::eoi)
         advance();
@@ -206,11 +205,11 @@ _error:
 }
 
 
-Declaration *Parser::parseBoolDec()
+DeclarationBool *Parser::parseBoolDec()
 {
-    Expr *E;
+    Logic *L;
     llvm::SmallVector<llvm::StringRef, 8> Vars;
-    llvm::SmallVector<Expr *, 8> Values;
+    llvm::SmallVector<Logic *, 8> Values;
     int count = 1;
     
     if (expect(Token::KW_bool)){
@@ -242,9 +241,9 @@ Declaration *Parser::parseBoolDec()
     if (Tok.is(Token::assign))
     {
         advance();
-        E = parseLogic();
-        if(E){
-            Values.push_back(E);
+        L = parseLogic();
+        if(L){
+            Values.push_back(L);
             count--; 
         }
         else{
@@ -259,9 +258,9 @@ Declaration *Parser::parseBoolDec()
             }
 
             advance();
-            E = parseLogic();
-            if(E){
-                Values.push_back(E);
+            L = parseLogic();
+            if(L){
+                Values.push_back(L);
                 count--; 
             }
             else{
@@ -275,7 +274,7 @@ Declaration *Parser::parseBoolDec()
     }
 
 
-    return new Declaration(Vars, Values);
+    return new DeclarationBool(Vars, Values);
 _error: 
     while (Tok.getKind() != Token::eoi)
         advance();
@@ -300,12 +299,14 @@ Assignment *Parser::parseAssign()
     {
         AK = Assignment::Assign;
         advance();
-        LogicalExpr *L;
+        Logic *L;
         L = parseLogic();   // check if expr is logical
-        if(L){
+        if(L)
+        {
             return new Assignment(F, nullptr, AK, L);
         }
-        else{
+        else
+        {
             Tok = prev_Tok;
         }
     }
@@ -491,6 +492,7 @@ Expr *Parser::parseFinal()
         Res = new Final(Final::Ident, Tok.getText());
         Token prev_tok = Tok;
         advance();
+        // TODO: parseUnary
         if (Tok.getKind() == Token::plus_plus){
             Res = new UnaryOp(UnaryOp::Plus_plus, prev_tok.getText());
             advance();
@@ -536,8 +538,8 @@ Expr *Parser::parseFinal()
         }
         if (!consume(Token::r_paren))
             break;
-        else
-            goto _error;        //CHECK??
+        
+        goto _error;        //CHECK??
     default:
         error();
         goto _error;

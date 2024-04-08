@@ -8,7 +8,8 @@
 class AST;
 class Expr;
 class Program;
-class Declaration;
+class DeclarationInt;
+class DeclarationBool;
 class Final;
 class BinaryOp;
 class UnaryOp;
@@ -38,7 +39,8 @@ public:
   virtual void visit(SignedNumber &) = 0;
   virtual void visit(NegExpr &) = 0;
   virtual void visit(Assignment &) = 0;      // Visit the assignment expression node
-  virtual void visit(Declaration &) = 0;     // Visit the variable declaration node
+  virtual void visit(DeclarationInt &) = 0;     // Visit the variable declaration node
+  virtual void visit(DeclarationBool &) = 0;     // Visit the variable declaration node
   virtual void visit(Logic &) {}             // Visit the Logic node
   virtual void visit(Comparison &) = 0;      // Visit the Comparison node
   virtual void visit(LogicalExpr &) = 0;     // Visit the LogicalExpr node
@@ -95,7 +97,7 @@ public:
 };
 
 // Declaration class represents a variable declaration with an initializer in the AST
-class Declaration : public Program
+class DeclarationInt : public Program
 {
   using VarVector = llvm::SmallVector<llvm::StringRef, 8>;
   using ValueVector = llvm::SmallVector<Expr *, 8>;
@@ -104,7 +106,33 @@ class Declaration : public Program
 
 public:
   // Declaration(llvm::SmallVector<llvm::StringRef, 8> Vars, Expr *E) : Vars(Vars), E(E) {}
-  Declaration(llvm::SmallVector<llvm::StringRef, 8> Vars, llvm::SmallVector<Expr *, 8> Values) : Vars(Vars), Values(Values) {}
+  DeclarationInt(llvm::SmallVector<llvm::StringRef, 8> Vars, llvm::SmallVector<Expr *, 8> Values) : Vars(Vars), Values(Values) {}
+
+  VarVector::const_iterator varBegin() { return Vars.begin(); }
+
+  VarVector::const_iterator varEnd() { return Vars.end(); }
+
+  ValueVector::const_iterator valBegin() { return Values.begin(); }
+
+  ValueVector::const_iterator valEnd() { return Values.end(); }
+
+  virtual void accept(ASTVisitor &V) override
+  {
+    V.visit(*this);
+  }
+};
+
+// Declaration class represents a variable declaration with an initializer in the AST
+class DeclarationBool : public Program
+{
+  using VarVector = llvm::SmallVector<llvm::StringRef, 8>;
+  using ValueVector = llvm::SmallVector<Logic *, 8>;
+  VarVector Vars;                           // Stores the list of variables
+  ValueVector Values;                       // Stores the list of initializers
+
+public:
+  // Declaration(llvm::SmallVector<llvm::StringRef, 8> Vars, Expr *E) : Vars(Vars), E(E) {}
+  DeclarationBool(llvm::SmallVector<llvm::StringRef, 8> Vars, llvm::SmallVector<Logic *, 8> Values) : Vars(Vars), Values(Values) {}
 
   VarVector::const_iterator varBegin() { return Vars.begin(); }
 
@@ -244,7 +272,7 @@ private:
   Expr *expr;                              
 
 public:
-  SignedNumber(Expr *E) : expr(E) {}
+  NegExpr(Expr *E) : expr(E) {}
 
   Expr *getExpr() { return expr; }
 
@@ -269,17 +297,17 @@ class Assignment : public Program
 private:
   Final *Left;                             // Left-hand side Final (identifier)
   Expr *RightExpr;                         // Right-hand side expression
-  LogicalExpr *RightLogicExpr;             // Right-hand side logical expression
+  Logic *RightLogicExpr;                   // Right-hand side logical expression
   AssignKind AK;                           // Kind of assignment
 
 public:
-  Assignment(Final *L, Expr *RE, AssignKind AK, LogicalExpr *RL) : Left(L), RightExpr(RE), AK(AK), RightLogicExpr(RL) {}
+  Assignment(Final *L, Expr *RE, AssignKind AK, Logic *RL) : Left(L), RightExpr(RE), AK(AK), RightLogicExpr(RL) {}
 
   Final *getLeft() { return Left; }
 
   Expr *getRight() { return RightExpr; }
 
-  LogicalExpr *getRightLogic() { return RightLogicExpr; }
+  Logic *getRightLogic() { return RightLogicExpr; }
 
   AssignKind getAssignKind() { return AK; }
 
