@@ -49,6 +49,7 @@ public:
         KW_false,       // false
         KW_if,          // if
         KW_else,        // else
+        KW_elseif,      // else if
         KW_while,       // while
         KW_for,         // for
         KW_and,         // and

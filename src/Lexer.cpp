@@ -55,6 +55,8 @@ void Lexer::next(Token &token)
             kind = Token::KW_if;
         else if (Name == "else")
             kind = Token::KW_else;
+        else if (Name == "elseif")
+            kind = Token::KW_elseif;
         else if (Name == "true")
             kind = Token::KW_true;
         else if (Name == "false")

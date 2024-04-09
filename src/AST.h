@@ -387,33 +387,22 @@ public:
   }
 };
 
-class elifStmt : public AST
+class elifStmt : public Program
 {
-using assignmentsVector = llvm::SmallVector<Assignment *, 8>;
-using unaryVector = llvm::SmallVector<UnaryOp *, 8>;
-using ifVector = llvm::SmallVector<IfStmt *, 8>;
-using whileVector = llvm::SmallVector<WhileStmt *, 8>;
-using forVector = llvm::SmallVector<ForStmt *, 8>;
-using printVector = llvm::SmallVector<PrintStmt *, 8>;
-assignmentsVector assignments;
-unaryVector unarays;
-ifVector ifs;
-whileVector whiles;
-forVector fors;
-printVector prints;
-
+  using Stmts = llvm::SmallVector<AST *>;
 
 private:
+  Stmts S;
   Logic *Cond;
 
 public:
-  elifStmt(Logic *Cond, assignmentsVector assignments) : Cond(Cond), assignments(assignments) {}
+  elifStmt(Logic *Cond, llvm::SmallVector<AST *> S) : Cond(Cond), S(S) {}
 
   Logic *getCond() { return Cond; }
 
-  assignmentsVector::const_iterator begin() { return assignments.begin(); }
+  Stmts::const_iterator begin() { return S.begin(); }
 
-  assignmentsVector::const_iterator end() { return assignments.end(); }
+  Stmts::const_iterator end() { return S.end(); }
 
   virtual void accept(ASTVisitor &V) override
   {
@@ -424,44 +413,27 @@ public:
 
 class IfStmt : public Program
 {
-using assignmentsVector = llvm::SmallVector<Assignment *, 8>;
-using unaryVector = llvm::SmallVector<UnaryOp *, 8>;
-using ifVector = llvm::SmallVector<IfStmt *, 8>;
-using whileVector = llvm::SmallVector<WhileStmt *, 8>;
-using forVector = llvm::SmallVector<ForStmt *, 8>;
-using printVector = llvm::SmallVector<PrintStmt *, 8>;
-using elifVector = llvm::SmallVector<elifStmt *, 8>;
-
-assignmentsVector ifassignments;
-unaryVector ifunarays;
-ifVector ififs;
-whileVector ifwhiles;
-forVector iffors;
-printVector ifprints;
-assignmentsVector elseassignments;
-unaryVector elseunarays;
-ifVector elseifs;
-whileVector elsewhiles;
-forVector elsefors;
-printVector elseprints;
-elifVector elifStmts;
-
+using BodyVector = llvm::SmallVector<AST *>;
+using elifVector = llvm::SmallVector<elifStmt *>;
 
 private:
+  BodyVector ifStmts;
+  elifVector elifStmts;
+  BodyVector elseStmts;
   Logic *Cond;
 
 public:
-  IfStmt(Logic *Cond, llvm::SmallVector<Assignment *, 8> ifAssignments, llvm::SmallVector<Assignment *, 8> elseAssignments, llvm::SmallVector<elifStmt *, 8> elifStmts) : Cond(Cond), ifAssignments(ifAssignments), elseAssignments(elseAssignments), elifStmts(elifStmts) {}
+  IfStmt(Logic *Cond, llvm::SmallVector<AST *> ifStmts, llvm::SmallVector<AST *> elseStmts, llvm::SmallVector<elifStmt *, 8> elifStmts) : Cond(Cond), ifAssignments(ifAssignments), elseAssignments(elseAssignments), elifStmts(elifStmts) {}
 
   Logic *getCond() { return Cond; }
 
-  assignmentsVector::const_iterator begin() { return ifAssignments.begin(); }
+  BodyVector::const_iterator begin() { return ifStmts.begin(); }
 
-  assignmentsVector::const_iterator end() { return ifAssignments.end(); }
+  BodyVector::const_iterator end() { return ifStmts.end(); }
 
-  assignmentsVector::const_iterator beginElse() { return elseAssignments.begin(); }
+  BodyVector::const_iterator beginElse() { return elseStmts.begin(); }
 
-  assignmentsVector::const_iterator endElse() { return elseAssignments.end(); }
+  BodyVector::const_iterator endElse() { return elseStmts.end(); }
 
   elifVector::const_iterator beginElif() { return elifStmts.begin(); }
 

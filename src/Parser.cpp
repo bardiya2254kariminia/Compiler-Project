@@ -15,7 +15,7 @@ Program *Parser::parseProgram()
     
     while (!Tok.is(Token::eoi))
     {
-        haveElse = true;
+        // haveElse = true;
         switch (Tok.getKind())
         {
         case Token::KW_int:
@@ -117,9 +117,9 @@ Program *Parser::parseProgram()
             goto _error;
             break;
         }
-        if(haveElse){
-            advance();
-        }
+        // if(haveElse){
+        //     advance();
+        // }
     }
     return new Program(data);
 _error:
@@ -656,16 +656,20 @@ _error:
 
 IfStmt *Parser::parseIf()
 {
-    llvm::SmallVector<Assignment *, 8> ifAssignments;
-    llvm::SmallVector<Assignment *, 8> elseAssignments;
+    llvm::SmallVector<AST *> ifStmts;
+    llvm::SmallVector<AST *> elseStmts;
     llvm::SmallVector<elifStmt *, 8> elifStmts;
     Logic *Cond;
-    Assignment *ifAsgnmnt;
-    Assignment *elseAssignment;
 
-    haveElse = false;
+    // haveElse = false;
 
     if (expect(Token::KW_if)){
+        goto _error;
+    }
+
+    advance();
+
+    if (expect(Token::l_paren)){
         goto _error;
     }
 
@@ -677,125 +681,99 @@ IfStmt *Parser::parseIf()
         goto _error;
     }
 
-    if (expect(Token::colon)){
+    if (expect(Token::r_paren)){
         goto _error;
     }
         
     advance();
 
-    if (expect(Token::KW_begin)){
+    if (expect(Token::l_brace)){
         goto _error;
     }
 
     advance();
     
-    while (!Tok.is(Token::KW_end))
-    {
-        ifAsgnmnt = parseAssign();
-        if(ifAsgnmnt)
-           ifAssignments.push_back(ifAsgnmnt);
-        else
-            goto _error;
+    ifStmts = getBody();
         
-        if (expect(Token::semicolon))
-        {
+    advance();  
+    
+
+    while (Tok.is(Token::KW_elseif)) {
+
+        advance();
+        
+        if (expect(Token::l_paren)){
             goto _error;
         }
 
         advance();
-    }
 
-    advance();
+        Logic *Cond = parseLogic();
 
-    while (Tok.is(Token::KW_elif)) {
-
-        advance();
-        
-        elifStmt *elif;
-        llvm::SmallVector<Assignment *, 8> elifAssignments;
-        Logic *Cond;
-        Assignment *elifAssignment;
-
-        Cond = parseLogic();
         if (Cond == nullptr)
         {
             goto _error;
         }
 
-        if (expect(Token::colon)){
+        if (expect(Token::r_paren)){
             goto _error;
         }
 
         advance();
 
-        if (expect(Token::KW_begin)){
+        if (expect(Token::l_brace)){
             goto _error;
         }
 
         advance();
 
-        while (!Tok.is(Token::KW_end))
-        {
-            elifAssignment = parseAssign();
-
-            if (elifAssignment)
-            {
-                elifAssignments.push_back(elifAssignment);                
-            }
-            else
-                goto _error;
-            
-            if (expect(Token::semicolon))
-            {
-                goto _error;
-            }
-
-            advance();
-        }
-
-        elif = new elifStmt(Cond, elifAssignments);
+        llvm::SmallVector<AST *> Stmts = getBody();
+        
+        advance();  
+        
+        elifStmt *elif = new elifStmt(Cond, Stmts);
         elifStmts.push_back(elif);
         advance();
     }
 
     if (Tok.is(Token::KW_else))
     {
-        haveElse = true;
+        // haveElse = true;
 
         advance();
 
-        if (expect(Token::colon)){
+        if (expect(Token::l_paren)){
             goto _error;
         }
 
         advance();
 
-        if (expect(Token::KW_begin)){
+        Cond = parseLogic();
+
+        if (Cond == nullptr)
+        {
             goto _error;
         }
+
+        if (expect(Token::r_paren)){
+            goto _error;
+        }
+
+        advance();
+
+        if (expect(Token::l_brace)){
+            goto _error;
+        }
+
+        advance();
+
+        elseStmts = getBody();
         
         advance();
 
-        while (!Tok.is(Token::KW_end))
-        {
-            elseAssignment = parseAssign();
-            if(elseAssignment)
-                elseAssignments.push_back(elseAssignment);
-            else
-                goto _error;
-
-            if (expect(Token::semicolon))
-            {
-                goto _error;
-            }
-
-            advance();
-        }
-
     }
 
-
-    return new IfStmt(Cond, ifAssignments, elseAssignments, elifStmts);
+    return new IfStmt(Cond, ifStmts, elseStmts, elifStmts);
 
 _error:
     while (Tok.getKind() != Token::eoi)
@@ -855,4 +833,108 @@ _error:
     while (Tok.getKind() != Token::eoi)
         advance();
     return nullptr;
+}
+
+llvm::SmallVector<AST *> *Parser::getBody()
+{
+    llvm::SmallVector<AST *> body;
+    // haveElse = true;
+    while (!Tok.is(Token::r_brace))
+    {
+        switch (Tok.getKind())
+        {
+        
+        case Token::ident:
+            Token prev_token = Tok;
+            UnaryOp *u;
+            u = parseUnary();
+            if (Tok.is(Token::semicolon))
+            {
+                if (u)
+                {
+                    body.push_back(u);
+                    break;
+                }
+                else
+                    Tok = prev_token;
+            }
+            else
+            {
+                if (u)
+                {
+                    error();
+                    goto _error;
+                }
+                else
+                    Tok = prev_token;
+            }
+
+            
+            Assignment *a;
+            a = parseAssign();
+            if (!Tok.is(Token::semicolon))
+            {
+                error();
+                goto _error;
+            }
+
+            if (a)
+                body.push_back(a);
+            else
+                goto _error;
+
+            break;
+        case Token::KW_if:
+            IfStmt *i;
+            i = parseIf();
+            if (i)
+                body.push_back(i);
+            else
+                goto _error;
+            
+            break;
+        case Token::KW_while:
+            WhileStmt *l;
+            l = parseWhile();
+            if (l)
+                body.push_back(l);
+            else {
+                goto _error;
+            }
+            break;
+        case Token::KW_for:
+            ForStmt *l;
+            l = parseFor();
+            if (l)
+                body.push_back(l);
+            else {
+                goto _error;
+            }
+            break;
+        case Token::KW_print:
+            PrintStmt *l;
+            l = parsePrint();
+            if (l)
+                body.push_back(l);
+            else {
+                goto _error;
+            }
+            break;
+        default:
+            error();
+            goto _error;
+            break;
+        }
+        // if(haveElse){
+        //     advance();
+        // }
+    }
+    // haveElse = false;
+    return body;
+
+_error:
+    while (Tok.getKind() != Token::eoi)
+        advance();
+    return nullptr;
+
 }
