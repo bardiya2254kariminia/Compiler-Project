@@ -487,23 +487,17 @@ Expr *Parser::parseFinal()
     case Token::number:
         Res = new Final(Final::Number, Tok.getText());
         advance();
-        break;
+
     case Token::ident:
         Res = new Final(Final::Ident, Tok.getText());
         Token prev_tok = Tok;
+        Expr* u = parseUnary();
+        if(u)
+            Res = u;
+        else
+            Tok = prev_tok;
         advance();
-        // TODO: parseUnary
-        if (Tok.getKind() == Token::plus_plus){
-            Res = new UnaryOp(UnaryOp::Plus_plus, prev_tok.getText());
-            advance();
-            break;
-        }
-        else if(Tok.getKind() == Token::minus_minus){
-            Res = new UnaryOp(UnaryOp::Minus_minus, prev_tok.getText());
-            advance();
-            break;
-        }
-        break;
+        return Res;
         
     case Token::plus:
         advance();
@@ -513,6 +507,7 @@ Expr *Parser::parseFinal()
             break;
         }
         goto _error;
+
     case Token::minus:
         advance();
         if (Tok.getKind == Token::number){
@@ -530,6 +525,7 @@ Expr *Parser::parseFinal()
                 break;
         }
         goto _error;
+
     case Token::l_paren:
         advance();
         Res = parseExpr();
@@ -540,6 +536,7 @@ Expr *Parser::parseFinal()
             break;
         
         goto _error;        //CHECK??
+
     default:
         error();
         goto _error;
@@ -695,7 +692,10 @@ IfStmt *Parser::parseIf()
     
     ifStmts = getBody();
         
-    advance();  
+    if(ifStmts)
+        advance();
+    else
+        goto _error;
     
 
     while (Tok.is(Token::KW_elseif)) {
@@ -729,7 +729,10 @@ IfStmt *Parser::parseIf()
 
         llvm::SmallVector<AST *> Stmts = getBody();
         
-        advance();  
+        if(Stmts)
+            advance();
+        else
+            goto _error;
         
         elifStmt *elif = new elifStmt(Cond, Stmts);
         elifStmts.push_back(elif);
@@ -769,7 +772,10 @@ IfStmt *Parser::parseIf()
 
         elseStmts = getBody();
         
-        advance();
+        if(elseStmts)
+            advance();
+        else
+            goto _error;
 
     }
 
@@ -781,15 +787,21 @@ _error:
     return nullptr;
 }
 
-WhileStmt *Parser::parseIter()
+WhileStmt *Parser::parseWhile()
 {
-    llvm::SmallVector<Assignment *, 8> assignments;
+    llvm::SmallVector<AST *> Body;
     Logic *Cond;
 
-    if (expect(Token::KW_loopc)){
+    if (expect(Token::KW_while)){
         goto _error;
     }
         
+    advance();
+
+    if(expect(Token::l_paren)){
+        goto _error;
+    }
+
     advance();
 
     Cond = parseLogic();
@@ -797,37 +809,26 @@ WhileStmt *Parser::parseIter()
     {
         goto _error;
     }
-    if(expect(Token::colon)){
+    if(expect(Token::r_paren)){
         goto _error;
     }
 
     advance();
 
-    if (expect(Token::KW_begin)){
+    if (expect(Token::l_brace)){
         goto _error;
     }
 
     advance();
 
-    while (!Tok.is(Token::KW_end))
-    {
-        Assignment *asgnmnt = parseAssign();
-        if(asgnmnt){
-            assignments.push_back(asgnmnt);
-        }
-        else{
-            goto _error;
-        }
-        
-        if (expect(Token::semicolon))
-        {
-            goto _error;
-        }
-
+    Body = getBody();
+    if(Body)
         advance();
-    }
+    else
+        goto _error;
+        
 
-    return new IterStmt(Cond, assignments);
+    return new WhileStmt(Cond, Body);
 
 _error:
     while (Tok.getKind() != Token::eoi)
@@ -835,7 +836,7 @@ _error:
     return nullptr;
 }
 
-llvm::SmallVector<AST *> *Parser::getBody()
+llvm::SmallVector<AST *> Parser::getBody()
 {
     llvm::SmallVector<AST *> body;
     // haveElse = true;

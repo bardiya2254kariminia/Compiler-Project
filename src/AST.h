@@ -447,20 +447,20 @@ public:
 
 class WhileStmt : public Program
 {
-using assignmentsVector = llvm::SmallVector<Assignment *, 8>;
-assignmentsVector assignments;
+using BodyVector = llvm::SmallVector<AST *>;
+BodyVector Body;
 
 private:
   Logic *Cond;
 
 public:
-  WhileStmt(Logic *Cond, llvm::SmallVector<Assignment *, 8> assignments) : Cond(Cond), assignments(assignments) {}
+  WhileStmt(Logic *Cond, llvm::SmallVector<AST *> Body) : Cond(Cond), Body(Body) {}
 
   Logic *getCond() { return Cond; }
 
-  assignmentsVector::const_iterator begin() { return assignments.begin(); }
+  BodyVector::const_iterator begin() { return Body.begin(); }
 
-  assignmentsVector::const_iterator end() { return assignments.end(); }
+  BodyVector::const_iterator end() { return Body.end(); }
 
   virtual void accept(ASTVisitor &V) override
   {
