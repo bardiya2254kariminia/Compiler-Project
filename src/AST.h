@@ -468,4 +468,54 @@ public:
   }
 };
 
+
+class ForStmt : public Program
+{
+using BodyVector = llvm::SmallVector<AST *>;
+BodyVector Body;
+
+private:
+  Assignment *First;
+  Comparison *Second;
+  Assignment *ThirdAssign;
+  UnaryOp *ThirdUnary;
+
+
+public:
+  ForStmt(Assignment *First, Comparison *Second, Assignment *ThirdAssign, UnaryOp* ThirdUnary, llvm::SmallVector<AST *> Body) : First(First), Second(Second), ThirdAssign(ThirdAssign), ThirdUnary(ThirdUnary), Body(Body) {}
+
+  Assignment *getFirst() { return First; }
+
+  Comparison *getSecond() { return Second; }
+
+  Assignment *getThirdAssign() { return ThirdAssign; }
+
+  UnaryOp *getThirdUnary() { return ThirdUnary; }
+
+  BodyVector::const_iterator begin() { return Body.begin(); }
+
+  BodyVector::const_iterator end() { return Body.end(); }
+
+  virtual void accept(ASTVisitor &V) override
+  {
+    V.visit(*this);
+  }
+};
+
+class PrintStmt : public Program
+{
+private:
+  llvm::StringRef Var;
+  
+public:
+  PrintStmt(llvm::StringRef Var) : Var(Var) {}
+
+  llvm::StringRef getVar() { return Var; }
+
+  virtual void accept(ASTVisitor &V) override
+  {
+    V.visit(*this);
+  }
+}
+
 #endif

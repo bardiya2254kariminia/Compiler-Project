@@ -787,6 +787,41 @@ _error:
     return nullptr;
 }
 
+
+
+PrintStmt *Parser::parsePrint()
+{
+    llvm::StringRef Var;
+    if (expect(Token::KW_print)){
+        goto _error;
+    }
+    advance();
+    if (expect(Token::l_paren)){
+        goto _error;
+    }
+    advance();
+    if (expect(Token::ident)){
+        goto _error;
+    }
+    Var = Tok.getText();
+    advance();
+    if (expect(Token::l_paren)){
+        goto _error;
+    }
+    advance();
+    if (expect(Token::semicolon)){
+        goto _error;
+    }
+    advance();
+    return new PrintStmt(Var);
+
+error:
+    while (Tok.getKind() != Token::eoi)
+        advance();
+    return nullptr;
+
+}
+
 WhileStmt *Parser::parseWhile()
 {
     llvm::SmallVector<AST *> Body;
@@ -836,7 +871,97 @@ _error:
     return nullptr;
 }
 
-llvm::SmallVector<AST *> Parser::getBody()
+ForStmt *Parser::parseFor()
+{
+    Assignment *First;
+    Comparison *Second;
+    Assignment *ThirdAssign;
+    UnaryOp *ThirdUnary;
+    llvm::SmallVector<AST *> Body;
+
+    if (expect(Token::KW_for)){
+        goto _error;
+    }
+        
+    advance();
+
+    if(expect(Token::l_paren)){
+        goto _error;
+    }
+
+    advance();
+
+    First = parseAssign();
+
+    if (First == nullptr)
+        goto _error;
+        
+    if (First.getAssignKind() != Assignment::Assign)    // The first part can only have a '=' sign
+        goto _error;
+
+    if(expect(Token::semicolon)){
+        goto _error;
+    }
+
+    advance();
+
+    Second = parseComparison();
+
+    if (Second == nullptr)
+        goto _error;
+        
+    if(expect(Token::semicolon)){
+        goto _error;
+    }
+
+    advance();
+
+    Token prev_token = Tok;
+
+    ThirdAssign = parseAssign();
+
+    if (ThirdAssign == nullptr){
+        Tok = prev_token;
+        ThirdUnary = parseUnary();
+        if (ThirdUnary == nullptr){
+            goto _error;
+        }
+
+    }
+    else{
+        if(ThirdAssign.getAssignKind() == Assignment::Assign)   // The third part cannot have only '=' sign
+            goto _error;
+    }
+
+
+    if(expect(Token::r_paren)){
+        goto _error;
+    }
+
+    advance();
+
+    if(expect(Token::l_brace)){
+        goto _error;
+    }
+
+    advance();
+
+    Body = getBody();
+
+    if (Body)
+        advance();
+    else
+        goto _error;
+
+    return new ForStmt(First, Second, ThirdAssign, ThirdUnary, Body);
+
+_error:
+    while (Tok.getKind() != Token::eoi)
+        advance();
+    return nullptr;  
+}
+
+SmallVector<AST *> Parser::getBody()
 {
     llvm::SmallVector<AST *> body;
     // haveElse = true;
