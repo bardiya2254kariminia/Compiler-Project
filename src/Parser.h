@@ -55,7 +55,7 @@ class Parser
     WhileStmt *parseWhile();
     ForStmt *parseFor();
     PrintStmt *parsePrint();
-    SmallVector<AST *> getBody();
+    llvm::SmallVector<AST *> getBody();
 
 public:
     // initializes all members and retrieves the first token

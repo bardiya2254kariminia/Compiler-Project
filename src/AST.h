@@ -99,14 +99,14 @@ public:
 // Declaration class represents a variable declaration with an initializer in the AST
 class DeclarationInt : public Program
 {
-  using VarVector = llvm::SmallVector<llvm::StringRef, 8>;
-  using ValueVector = llvm::SmallVector<Expr *, 8>;
+  using VarVector = llvm::SmallVector<llvm::StringRef>;
+  using ValueVector = llvm::SmallVector<Expr *>;
   VarVector Vars;                           // Stores the list of variables
   ValueVector Values;                       // Stores the list of initializers
 
 public:
-  // Declaration(llvm::SmallVector<llvm::StringRef, 8> Vars, Expr *E) : Vars(Vars), E(E) {}
-  DeclarationInt(llvm::SmallVector<llvm::StringRef, 8> Vars, llvm::SmallVector<Expr *, 8> Values) : Vars(Vars), Values(Values) {}
+  // Declaration(llvm::SmallVector<llvm::StringRef> Vars, Expr *E) : Vars(Vars), E(E) {}
+  DeclarationInt(llvm::SmallVector<llvm::StringRef> Vars, llvm::SmallVector<Expr *> Values) : Vars(Vars), Values(Values) {}
 
   VarVector::const_iterator varBegin() { return Vars.begin(); }
 
@@ -125,14 +125,14 @@ public:
 // Declaration class represents a variable declaration with an initializer in the AST
 class DeclarationBool : public Program
 {
-  using VarVector = llvm::SmallVector<llvm::StringRef, 8>;
-  using ValueVector = llvm::SmallVector<Logic *, 8>;
+  using VarVector = llvm::SmallVector<llvm::StringRef>;
+  using ValueVector = llvm::SmallVector<Logic *>;
   VarVector Vars;                           // Stores the list of variables
   ValueVector Values;                       // Stores the list of initializers
 
 public:
-  // Declaration(llvm::SmallVector<llvm::StringRef, 8> Vars, Expr *E) : Vars(Vars), E(E) {}
-  DeclarationBool(llvm::SmallVector<llvm::StringRef, 8> Vars, llvm::SmallVector<Logic *, 8> Values) : Vars(Vars), Values(Values) {}
+  // Declaration(llvm::SmallVector<llvm::StringRef> Vars, Expr *E) : Vars(Vars), E(E) {}
+  DeclarationBool(llvm::SmallVector<llvm::StringRef> Vars, llvm::SmallVector<Logic *> Values) : Vars(Vars), Values(Values) {}
 
   VarVector::const_iterator varBegin() { return Vars.begin(); }
 
@@ -423,7 +423,7 @@ private:
   Logic *Cond;
 
 public:
-  IfStmt(Logic *Cond, llvm::SmallVector<AST *> ifStmts, llvm::SmallVector<AST *> elseStmts, llvm::SmallVector<elifStmt *, 8> elifStmts) : Cond(Cond), ifAssignments(ifAssignments), elseAssignments(elseAssignments), elifStmts(elifStmts) {}
+  IfStmt(Logic *Cond, llvm::SmallVector<AST *> ifStmts, llvm::SmallVector<AST *> elseStmts, llvm::SmallVector<elifStmt *> elifStmts) : Cond(Cond), ifStmts(ifStmts), elseStmts(elseStmts), elifStmts(elifStmts) {}
 
   Logic *getCond() { return Cond; }
 
@@ -516,6 +516,6 @@ public:
   {
     V.visit(*this);
   }
-}
+};
 
 #endif

@@ -131,8 +131,8 @@ _error:
 DeclarationInt *Parser::parseIntDec()
 {
     Expr *E;
-    llvm::SmallVector<llvm::StringRef, 8> Vars;
-    llvm::SmallVector<Expr *, 8> Values;
+    llvm::SmallVector<llvm::StringRef> Vars;
+    llvm::SmallVector<Expr *> Values;
     int count = 1;
     
     if (expect(Token::KW_int)){
@@ -208,8 +208,8 @@ _error:
 DeclarationBool *Parser::parseBoolDec()
 {
     Logic *L;
-    llvm::SmallVector<llvm::StringRef, 8> Vars;
-    llvm::SmallVector<Logic *, 8> Values;
+    llvm::SmallVector<llvm::StringRef> Vars;
+    llvm::SmallVector<Logic *> Values;
     int count = 1;
     
     if (expect(Token::KW_bool)){
@@ -655,7 +655,7 @@ IfStmt *Parser::parseIf()
 {
     llvm::SmallVector<AST *> ifStmts;
     llvm::SmallVector<AST *> elseStmts;
-    llvm::SmallVector<elifStmt *, 8> elifStmts;
+    llvm::SmallVector<elifStmt *> elifStmts;
     Logic *Cond;
 
     // haveElse = false;
@@ -961,7 +961,7 @@ _error:
     return nullptr;  
 }
 
-SmallVector<AST *> Parser::getBody()
+llvm::SmallVector<AST *> Parser::getBody()
 {
     llvm::SmallVector<AST *> body;
     // haveElse = true;
