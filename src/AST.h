@@ -156,9 +156,7 @@ public:
   enum ValueKind
   {
     Ident,
-    Number,
-    True,
-    False
+    Number
   };
 
 private:
@@ -305,7 +303,7 @@ public:
 
   Final *getLeft() { return Left; }
 
-  Expr *getRight() { return RightExpr; }
+  Expr *getRightExpr() { return RightExpr; }
 
   Logic *getRightLogic() { return RightLogicExpr; }
 
@@ -328,28 +326,25 @@ class Comparison : public Logic
     Greater,        // >
     Less,           // <
     Greater_equal,  // >=
-    Less_equal,      // <=
+    Less_equal,     // <=
     True,           //CHECK???
     False,
-    Ident
+    Ident           // only one boolean ident
   };
     
 private:
   Expr *Left;                                // Left-hand side expression
   Expr *Right;                               // Right-hand side expression
   Operator Op;                               // Kind of assignment
-  llvm::StringRef Value;                     // (if there is no op, it contains true, false or ident)
 
 public:
-  Comparison(Expr *L, Expr *R, Operator Opm ,llvm::StringRef V) : Left(L), Right(R), Op(Op), Value(V) {}
+  Comparison(Expr *L, Expr *R, Operator Opm) : Left(L), Right(R), Op(Op) {}
 
   Expr *getLeft() { return Left; }
 
   Expr *getRight() { return Right; }
 
   Operator getOperator() { return Op; }
-
-  llvm::StringRef getValue() { return Value; }
 
   virtual void accept(ASTVisitor &V) override
   {

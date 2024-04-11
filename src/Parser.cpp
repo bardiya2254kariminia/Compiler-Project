@@ -552,6 +552,7 @@ _error:
 Logic *Parser::parseComparison()
 {
     Logic *Res = nullptr;
+    Expr *Ident;
     if (Tok.is(Token::l_paren)) {
         advance();
         Res = parseLogic();
@@ -564,23 +565,25 @@ Logic *Parser::parseComparison()
     }
     else {
         if(Tok.is(Token::true)){
-            Res = new Comparison(nullptr, nullptr, Comparison::True, Tok.getText());
+            Res = new Comparison(nullptr, nullptr, Comparison::True);
             advance();
             return Res;
         }
         else if(Tok.is(Token::false)){
-            Res = new Comparison(nullptr, nullptr, Comparison::False, Tok.getText());
+            Res = new Comparison(nullptr, nullptr, Comparison::False);
             advance();
             return Res;
         }
         else if(Tok.is(Token::ident)){
-            Res = new Comparison(nullptr, nullptr, Comparison::Ident, Tok.getText());
-            advance();
-            return Res;
+            Ident = parseFinal();
+            if(Ident == nullptr){
+                goto _error;
+            }
         }
         Expr *Left = parseExpr();
         if(Left == nullptr)
             goto _error;
+
 
         Comparison::Operator Op;
             if (Tok.is(Token::eq))
@@ -596,6 +599,11 @@ Logic *Parser::parseComparison()
             else if (Tok.is(Token::lte))
                 Op = Comparison::Less_equal;    
             else {
+                    if(Ident){
+                        Res = new Comparison(Ident, nullptr, Comparison::Ident);
+                        advance();
+                        return Res;
+                    }
                     error();
                     goto _error;
                 }
@@ -606,7 +614,7 @@ Logic *Parser::parseComparison()
                 goto _error;
             }
             
-            Res = new Comparison(Left, Right, Op, Tok.getText());
+            Res = new Comparison(Left, Right, Op);
     }
     
     return Res;
@@ -1055,7 +1063,6 @@ llvm::SmallVector<AST *> Parser::getBody()
         //     advance();
         // }
     }
-    // haveElse = false;
     return body;
 
 _error:
