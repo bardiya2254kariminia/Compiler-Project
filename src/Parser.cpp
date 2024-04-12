@@ -15,10 +15,10 @@ Program *Parser::parseProgram()
     
     while (!Tok.is(Token::eoi))
     {
-        // haveElse = true;
+        haveElse = true;
         switch (Tok.getKind())
         {
-        case Token::KW_int:
+        case Token::KW_int: {
             DeclarationInt *d;
             d = parseIntDec();
             if (d)
@@ -27,16 +27,18 @@ Program *Parser::parseProgram()
                 goto _error;
                 
             break;
-        case Token::KW_bool:
-            DeclarationBool *d;
-            d = parseBoolDec();
-            if (d)
-                data.push_back(d);
+        }
+        case Token::KW_bool: {
+            DeclarationBool *dbool;
+            dbool = parseBoolDec();
+            if (dbool)
+                data.push_back(dbool);
             else
                 goto _error;
 
             break;
-        case Token::ident:
+        }
+        case Token::ident: {
             Token prev_token = Tok;
             UnaryOp *u;
             u = parseUnary();
@@ -57,16 +59,16 @@ Program *Parser::parseProgram()
                     error();
                     goto _error;
                 }
-                else
+                else{
                     Tok = prev_token;
+                }
             }
-
+        
             
             Assignment *a;
             a = parseAssign();
             if (!Tok.is(Token::semicolon))
             {
-                error();
                 goto _error;
             }
 
@@ -76,7 +78,8 @@ Program *Parser::parseProgram()
                 goto _error;
 
             break;
-        case Token::KW_if:
+        }
+        case Token::KW_if: {
             IfStmt *i;
             i = parseIf();
             if (i)
@@ -85,41 +88,46 @@ Program *Parser::parseProgram()
                 goto _error;
             
             break;
-        case Token::KW_while:
-            WhileStmt *l;
-            l = parseWhile();
-            if (l)
-                data.push_back(l);
+        }
+        case Token::KW_while: {
+            WhileStmt *w;
+            w = parseWhile();
+            if (w)
+                data.push_back(w);
             else {
                 goto _error;
             }
             break;
-        case Token::KW_for:
-            ForStmt *l;
-            l = parseFor();
-            if (l)
-                data.push_back(l);
+        }
+        case Token::KW_for: {
+            ForStmt *f;
+            f = parseFor();
+            if (f)
+                data.push_back(f);
             else {
                 goto _error;
             }
             break;
-        case Token::KW_print:
-            PrintStmt *l;
-            l = parsePrint();
-            if (l)
-                data.push_back(l);
+        }
+        case Token::KW_print: {
+            PrintStmt *p;
+            p = parsePrint();
+            if (p)
+                data.push_back(p);
             else {
                 goto _error;
             }
             break;
-        default:
+        }
+        default: {
             error();
             goto _error;
             break;
         }
-        // if(haveElse){
-        //     advance();
-        // }
+        }
+        if(haveElse){
+            advance();
+        }
     }
     return new Program(data);
 _error:
@@ -138,7 +146,6 @@ DeclarationInt *Parser::parseIntDec()
     if (expect(Token::KW_int)){
         goto _error;
     }
-
     advance();
     
     if (expect(Token::ident)){
@@ -147,7 +154,7 @@ DeclarationInt *Parser::parseIntDec()
 
     Vars.push_back(Tok.getText());
     advance();
-
+    
     
     while (Tok.is(Token::comma))
     {
@@ -288,18 +295,20 @@ Assignment *Parser::parseAssign()
     Expr *E;
     Final *F;
     Assignment::AssignKind AK;
+    Logic *L;
+    Token prev_Tok;
 
     F = (Final *)(parseFinal());
     if (F == nullptr)
     {
         goto _error;
     }
-    Token prev_Tok = Tok;
+    prev_Tok = Tok;
+    
     if (Tok.is(Token::assign))
     {
         AK = Assignment::Assign;
         advance();
-        Logic *L;
         L = parseLogic();   // check if expr is logical
         if(L)
         {
@@ -341,9 +350,10 @@ Assignment *Parser::parseAssign()
     }
 
 _error:
-    while (Tok.getKind() != Token::eoi)
-        advance();
-    return nullptr;
+        while (Tok.getKind() != Token::eoi)
+            advance();
+        return nullptr;
+    
 }
 
 UnaryOp *Parser::parseUnary()
@@ -484,11 +494,11 @@ Expr *Parser::parseFinal()
     Expr *Res = nullptr;
     switch (Tok.getKind())
     {
-    case Token::number:
+    case Token::number:{
         Res = new Final(Final::Number, Tok.getText());
         advance();
-
-    case Token::ident:
+    }
+    case Token::ident: {
         Res = new Final(Final::Ident, Tok.getText());
         Token prev_tok = Tok;
         Expr* u = parseUnary();
@@ -498,8 +508,8 @@ Expr *Parser::parseFinal()
             Tok = prev_tok;
         advance();
         return Res;
-        
-    case Token::plus:
+    }
+    case Token::plus:{
         advance();
         if(Tok.getKind() == Token::number){
             Res = new SignedNumber(SignedNumber::Plus, Tok.getText());
@@ -507,15 +517,16 @@ Expr *Parser::parseFinal()
             break;
         }
         goto _error;
+    }
 
-    case Token::minus:
+    case Token::minus:{
         advance();
-        if (Tok.getKind == Token::number){
+        if (Tok.getKind() == Token::number){
             Res = new SignedNumber(SignedNumber::Minus, Tok.getText());
             advance();
             break;
         }
-        else if(Tok.getKind == Token::l_paren){
+        else if(Tok.getKind() == Token::l_paren){
             advance();
             Expr *math_expr = parseExpr();
             if(math_expr == nullptr)
@@ -525,8 +536,8 @@ Expr *Parser::parseFinal()
                 break;
         }
         goto _error;
-
-    case Token::l_paren:
+    }
+    case Token::l_paren:{
         advance();
         Res = parseExpr();
         if(Res == nullptr){
@@ -536,10 +547,11 @@ Expr *Parser::parseFinal()
             break;
         
         goto _error;        //CHECK??
-
-    default:
+    }
+    default:{
         error();
         goto _error;
+    }
     }
     return Res;
 
@@ -564,12 +576,12 @@ Logic *Parser::parseComparison()
             goto _error;
     }
     else {
-        if(Tok.is(Token::true)){
+        if(Tok.is(Token::KW_true)){
             Res = new Comparison(nullptr, nullptr, Comparison::True);
             advance();
             return Res;
         }
-        else if(Tok.is(Token::false)){
+        else if(Tok.is(Token::KW_false)){
             Res = new Comparison(nullptr, nullptr, Comparison::False);
             advance();
             return Res;
@@ -700,7 +712,7 @@ IfStmt *Parser::parseIf()
     
     ifStmts = getBody();
         
-    if(ifStmts)
+    if(!ifStmts.empty())
         advance();
     else
         goto _error;
@@ -737,7 +749,7 @@ IfStmt *Parser::parseIf()
 
         llvm::SmallVector<AST *> Stmts = getBody();
         
-        if(Stmts)
+        if(!Stmts.empty())
             advance();
         else
             goto _error;
@@ -780,7 +792,7 @@ IfStmt *Parser::parseIf()
 
         elseStmts = getBody();
         
-        if(elseStmts)
+        if(!elseStmts.empty())
             advance();
         else
             goto _error;
@@ -823,7 +835,7 @@ PrintStmt *Parser::parsePrint()
     advance();
     return new PrintStmt(Var);
 
-error:
+_error:
     while (Tok.getKind() != Token::eoi)
         advance();
     return nullptr;
@@ -865,7 +877,7 @@ WhileStmt *Parser::parseWhile()
     advance();
 
     Body = getBody();
-    if(Body)
+    if(!Body.empty())
         advance();
     else
         goto _error;
@@ -886,6 +898,7 @@ ForStmt *Parser::parseFor()
     Assignment *ThirdAssign;
     UnaryOp *ThirdUnary;
     llvm::SmallVector<AST *> Body;
+    Token prev_token;
 
     if (expect(Token::KW_for)){
         goto _error;
@@ -904,7 +917,7 @@ ForStmt *Parser::parseFor()
     if (First == nullptr)
         goto _error;
         
-    if (First.getAssignKind() != Assignment::Assign)    // The first part can only have a '=' sign
+    if (First->getAssignKind() != Assignment::Assign)    // The first part can only have a '=' sign
         goto _error;
 
     if(expect(Token::semicolon)){
@@ -913,7 +926,7 @@ ForStmt *Parser::parseFor()
 
     advance();
 
-    Second = parseComparison();
+    Second = (Comparison*)parseComparison();
 
     if (Second == nullptr)
         goto _error;
@@ -924,7 +937,7 @@ ForStmt *Parser::parseFor()
 
     advance();
 
-    Token prev_token = Tok;
+    prev_token = Tok;
 
     ThirdAssign = parseAssign();
 
@@ -937,7 +950,7 @@ ForStmt *Parser::parseFor()
 
     }
     else{
-        if(ThirdAssign.getAssignKind() == Assignment::Assign)   // The third part cannot have only '=' sign
+        if(ThirdAssign->getAssignKind() == Assignment::Assign)   // The third part cannot have only '=' sign
             goto _error;
     }
 
@@ -956,7 +969,7 @@ ForStmt *Parser::parseFor()
 
     Body = getBody();
 
-    if (Body)
+    if (!Body.empty())
         advance();
     else
         goto _error;
@@ -967,18 +980,19 @@ _error:
     while (Tok.getKind() != Token::eoi)
         advance();
     return nullptr;  
+
 }
 
 llvm::SmallVector<AST *> Parser::getBody()
 {
     llvm::SmallVector<AST *> body;
-    // haveElse = true;
+    haveElse = true;
     while (!Tok.is(Token::r_brace))
     {
         switch (Tok.getKind())
         {
         
-        case Token::ident:
+        case Token::ident:{
             Token prev_token = Tok;
             UnaryOp *u;
             u = parseUnary();
@@ -1018,7 +1032,8 @@ llvm::SmallVector<AST *> Parser::getBody()
                 goto _error;
 
             break;
-        case Token::KW_if:
+        }
+        case Token::KW_if: {
             IfStmt *i;
             i = parseIf();
             if (i)
@@ -1027,47 +1042,52 @@ llvm::SmallVector<AST *> Parser::getBody()
                 goto _error;
             
             break;
-        case Token::KW_while:
-            WhileStmt *l;
-            l = parseWhile();
-            if (l)
-                body.push_back(l);
+        }
+        case Token::KW_while:{
+            WhileStmt *w;
+            w = parseWhile();
+            if (w)
+                body.push_back(w);
             else {
                 goto _error;
             }
             break;
-        case Token::KW_for:
-            ForStmt *l;
-            l = parseFor();
-            if (l)
-                body.push_back(l);
+        }
+        case Token::KW_for:{
+            ForStmt *f;
+            f = parseFor();
+            if (f)
+                body.push_back(f);
             else {
                 goto _error;
             }
             break;
-        case Token::KW_print:
-            PrintStmt *l;
-            l = parsePrint();
-            if (l)
-                body.push_back(l);
+        }
+        case Token::KW_print: {
+            PrintStmt *p;
+            p = parsePrint();
+            if (p)
+                body.push_back(p);
             else {
                 goto _error;
             }
             break;
-        default:
+        }
+        default:{
             error();
             goto _error;
             break;
         }
-        // if(haveElse){
-        //     advance();
-        // }
+        }
+        if(haveElse){
+            advance();
+        }
     }
     return body;
 
 _error:
     while (Tok.getKind() != Token::eoi)
         advance();
-    return nullptr;
+    return body;
 
 }

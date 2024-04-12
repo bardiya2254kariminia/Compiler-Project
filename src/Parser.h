@@ -13,7 +13,7 @@ class Parser
 
     void error()
     {
-        llvm::errs() << "Unexpected: " << Tok.getText() << "\n";
+        llvm::errs() << "Unexpected: " << Tok.getText() << Tok.getKind() << "\n";
         HasError = true;
     }
 
