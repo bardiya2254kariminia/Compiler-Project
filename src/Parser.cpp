@@ -42,11 +42,19 @@ Program *Parser::parseProgram()
             Token prev_token = Tok;
             const char* prev_buffer = Lex.getBuffer();
             UnaryOp *u;
-            u = parseUnary();
+            Assignment *a;
+
+            advance();
+            u = parseUnary(prev_tok);
+
+            if (!u)
+                a = parseAssign(prev_tok);
+            else
+                advance();
+
             if (Tok.is(Token::semicolon))
             {
                 if (u)
-                {
                     data.push_back(u);
                     break;
                 }
@@ -76,11 +84,6 @@ Program *Parser::parseProgram()
             {
                 goto _error;
             }
-
-            if (a)
-                data.push_back(a);
-            else
-                goto _error;
 
             break;
         }
@@ -295,7 +298,7 @@ _error:
 
 
 
-Assignment *Parser::parseAssign()
+Assignment *Parser::parseAssign(Token prev_Tok)
 {
     Expr *E;
     Final *F;
@@ -365,17 +368,16 @@ _error:
     
 }
 
-UnaryOp *Parser::parseUnary()
+UnaryOp *Parser::parseUnary(Token prev_tok)
 {
     UnaryOp* Res = nullptr;
     llvm::StringRef var;
 
-    if (expect(Token::ident)){
+    if (prev_tok.is(Token::ident))
         goto _error;
-    }
 
-    var = Tok.getText();
-    advance();
+    var = prev_tok.getText();
+
     if (Tok.getKind() == Token::plus_plus){
         Res = new UnaryOp(UnaryOp::Plus_plus, var);
     }
@@ -385,8 +387,6 @@ UnaryOp *Parser::parseUnary()
     else{
         goto _error;
     }
-
-    advance();
 
     return Res;
 
@@ -519,7 +519,7 @@ Expr *Parser::parseFinal()
             Lex.setBufferPtr(prev_buffer);
         }
         advance();
-        return Res;
+        break;
     }
     case Token::plus:{
         advance();
