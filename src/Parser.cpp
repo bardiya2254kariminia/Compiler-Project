@@ -39,43 +39,34 @@ Program *Parser::parseProgram()
             break;
         }
         case Token::ident: {
-            Token prev_token = Tok;
+            Token prev_tok = Tok;
             UnaryOp *u;
-            u = parseUnary();
+            Assignment *a;
+
+            advance();
+            u = parseUnary(prev_tok);
+
+            if (!u)
+                a = parseAssign(prev_tok);
+
+            advance();
             if (Tok.is(Token::semicolon))
             {
                 if (u)
-                {
                     data.push_back(u);
-                    break;
-                }
+                else if (a)
+                    data.push_back(a);
                 else
-                    Tok = prev_token;
-            }
-            else
-            {
-                if (u)
                 {
                     error();
                     goto _error;
                 }
-                else{
-                    Tok = prev_token;
-                }
             }
-        
-            
-            Assignment *a;
-            a = parseAssign();
-            if (!Tok.is(Token::semicolon))
-            {
-                goto _error;
-            }
-
-            if (a)
-                data.push_back(a);
             else
+            {
+                error();
                 goto _error;
+            }
 
             break;
         }
@@ -290,34 +281,26 @@ _error:
 
 
 
-Assignment *Parser::parseAssign()
+Assignment *Parser::parseAssign(Token prev_Tok)
 {
     Expr *E;
     Final *F;
     Assignment::AssignKind AK;
     Logic *L;
-    Token prev_Tok;
 
-    F = (Final *)(parseFinal());
-    if (F == nullptr)
-    {
+    if (prev_Tok.is(Token::ident))
+        F = new Final(Final::Ident, prev_Tok.getText());
+    else
         goto _error;
-    }
-    prev_Tok = Tok;
-    
+
     if (Tok.is(Token::assign))
     {
         AK = Assignment::Assign;
-        advance();
-        L = parseLogic();   // check if expr is logical
-        if(L)
-        {
-            return new Assignment(F, nullptr, AK, L);
-        }
-        else
-        {
-            Tok = prev_Tok;
-        }
+        // TODO
+        // advance();
+        // L = parseLogic();   // check if expr is logical
+        // if(L)
+        //     return new Assignment(F, nullptr, AK, L);
     }
     else if (Tok.is(Token::plus_assign))
     {
@@ -356,17 +339,16 @@ _error:
     
 }
 
-UnaryOp *Parser::parseUnary()
+UnaryOp *Parser::parseUnary(Token prev_tok)
 {
     UnaryOp* Res = nullptr;
     llvm::StringRef var;
 
-    if (expect(Token::ident)){
+    if (prev_tok.is(Token::ident))
         goto _error;
-    }
 
-    var = Tok.getText();
-    advance();
+    var = prev_tok.getText();
+
     if (Tok.getKind() == Token::plus_plus){
         Res = new UnaryOp(UnaryOp::Plus_plus, var);
     }
@@ -376,8 +358,6 @@ UnaryOp *Parser::parseUnary()
     else{
         goto _error;
     }
-
-    advance();
 
     return Res;
 
@@ -501,13 +481,13 @@ Expr *Parser::parseFinal()
     case Token::ident: {
         Res = new Final(Final::Ident, Tok.getText());
         Token prev_tok = Tok;
-        Expr* u = parseUnary();
+        advance();
+        Expr* u = parseUnary(prev_tok);
         if(u)
             Res = u;
-        else
-            Tok = prev_tok;
+
         advance();
-        return Res;
+        break;
     }
     case Token::plus:{
         advance();
@@ -898,7 +878,7 @@ ForStmt *Parser::parseFor()
     Assignment *ThirdAssign;
     UnaryOp *ThirdUnary;
     llvm::SmallVector<AST *> Body;
-    Token prev_token;
+    Token prev_tok;
 
     if (expect(Token::KW_for)){
         goto _error;
@@ -937,12 +917,12 @@ ForStmt *Parser::parseFor()
 
     advance();
 
-    prev_token = Tok;
+    prev_tok = Tok;
 
     ThirdAssign = parseAssign();
 
     if (ThirdAssign == nullptr){
-        Tok = prev_token;
+        Tok = prev_tok;
         ThirdUnary = parseUnary();
         if (ThirdUnary == nullptr){
             goto _error;
@@ -993,7 +973,7 @@ llvm::SmallVector<AST *> Parser::getBody()
         {
         
         case Token::ident:{
-            Token prev_token = Tok;
+            Token prev_tok = Tok;
             UnaryOp *u;
             u = parseUnary();
             if (Tok.is(Token::semicolon))
@@ -1004,7 +984,7 @@ llvm::SmallVector<AST *> Parser::getBody()
                     break;
                 }
                 else
-                    Tok = prev_token;
+                    Tok = prev_tok;
             }
             else
             {
@@ -1014,7 +994,7 @@ llvm::SmallVector<AST *> Parser::getBody()
                     goto _error;
                 }
                 else
-                    Tok = prev_token;
+                    Tok = prev_tok;
             }
 
             
