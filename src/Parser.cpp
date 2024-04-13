@@ -48,8 +48,9 @@ Program *Parser::parseProgram()
 
             if (!u)
                 a = parseAssign(prev_tok);
+            else
+                advance();
 
-            advance();
             if (Tok.is(Token::semicolon))
             {
                 if (u)
