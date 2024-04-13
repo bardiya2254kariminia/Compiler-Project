@@ -75,7 +75,6 @@ Program *Parser::parseProgram()
             {
                 goto _error;
             }
-
             if (a)
                 data.push_back(a);
             else
@@ -143,7 +142,7 @@ _error:
 
 DeclarationInt *Parser::parseIntDec()
 {
-    Expr *E;
+    Expr *E = nullptr;
     llvm::SmallVector<llvm::StringRef> Vars;
     llvm::SmallVector<Expr *> Values;
     int count = 1;
@@ -220,7 +219,7 @@ _error:
 
 DeclarationBool *Parser::parseBoolDec()
 {
-    Logic *L;
+    Logic *L = nullptr;
     llvm::SmallVector<llvm::StringRef> Vars;
     llvm::SmallVector<Logic *> Values;
     int count = 1;
@@ -299,10 +298,10 @@ _error:
 
 Assignment *Parser::parseAssign()
 {
-    Expr *E;
-    Final *F;
+    Expr *E = nullptr;
+    Final *F = nullptr;
     Assignment::AssignKind AK;
-    Logic *L;
+    Logic *L = nullptr;
     Token prev_Tok;
     const char* prev_buffer;
 
@@ -581,7 +580,7 @@ _error:
 Logic *Parser::parseComparison()
 {
     Logic *Res = nullptr;
-    Expr *Ident;
+    Expr *Ident = nullptr;
     if (Tok.is(Token::l_paren)) {
         advance();
         Res = parseLogic();
@@ -604,10 +603,7 @@ Logic *Parser::parseComparison()
             return Res;
         }
         else if(Tok.is(Token::ident)){
-            Ident = parseFinal();
-            if(Ident == nullptr){
-                goto _error;
-            }
+            Ident = new Final(Final::Ident, Tok.getText());
         }
         Expr *Left = parseExpr();
         if(Left == nullptr)
@@ -693,9 +689,9 @@ IfStmt *Parser::parseIf()
     llvm::SmallVector<AST *> ifStmts;
     llvm::SmallVector<AST *> elseStmts;
     llvm::SmallVector<elifStmt *> elifStmts;
-    Logic *Cond;
+    Logic *Cond = nullptr;
 
-    // haveElse = false;
+    haveElse = false;
 
     if (expect(Token::KW_if)){
         goto _error;
@@ -862,7 +858,7 @@ _error:
 WhileStmt *Parser::parseWhile()
 {
     llvm::SmallVector<AST *> Body;
-    Logic *Cond;
+    Logic *Cond = nullptr;
 
     if (expect(Token::KW_while)){
         goto _error;
@@ -910,10 +906,10 @@ _error:
 
 ForStmt *Parser::parseFor()
 {
-    Assignment *First;
-    Comparison *Second;
-    Assignment *ThirdAssign;
-    UnaryOp *ThirdUnary;
+    Assignment *First = nullptr;
+    Comparison *Second = nullptr;
+    Assignment *ThirdAssign = nullptr;
+    UnaryOp *ThirdUnary = nullptr;
     llvm::SmallVector<AST *> Body;
     Token prev_token;
     const char* prev_buffer;
