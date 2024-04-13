@@ -69,7 +69,6 @@ Program *Parser::parseProgram()
                 }
             }
         
-            
             Assignment *a;
             a = parseAssign();
             if (!Tok.is(Token::semicolon))
@@ -126,6 +125,7 @@ Program *Parser::parseProgram()
         }
         default: {
             error();
+
             goto _error;
             break;
         }
@@ -189,6 +189,7 @@ DeclarationInt *Parser::parseIntDec()
         {   
             if (count == 0){
                 error();
+
                 goto _error;
             }
 
@@ -266,6 +267,7 @@ DeclarationBool *Parser::parseBoolDec()
         {   
             if (count == 0){
                 error();
+
                 goto _error;
             }
 
@@ -347,6 +349,7 @@ Assignment *Parser::parseAssign()
     else
     {
         error();
+
         goto _error;
     }
     advance();
@@ -412,6 +415,7 @@ Expr *Parser::parseExpr()
             Op = BinaryOp::Minus;
         else {
             error();
+
             goto _error;
         }
         advance();
@@ -448,6 +452,7 @@ Expr *Parser::parseTerm()
             Op = BinaryOp::Mod;
         else {
             error();
+
             goto _error;
         }
         advance();
@@ -506,6 +511,7 @@ Expr *Parser::parseFinal()
     case Token::number:{
         Res = new Final(Final::Number, Tok.getText());
         advance();
+        break;
     }
     case Token::ident: {
         Res = new Final(Final::Ident, Tok.getText());
@@ -517,9 +523,9 @@ Expr *Parser::parseFinal()
         else{
             Tok = prev_tok;
             Lex.setBufferPtr(prev_buffer);
+            advance();
         }
-        advance();
-        return Res;
+        break;
     }
     case Token::plus:{
         advance();
@@ -558,7 +564,6 @@ Expr *Parser::parseFinal()
         if (!consume(Token::r_paren))
             break;
         
-        goto _error;        //CHECK??
     }
     default:{
         error();
@@ -664,6 +669,7 @@ Logic *Parser::parseLogic()
             Op = LogicalExpr::Or;
         else {
             error();
+
             goto _error;
         }
         advance();
@@ -1020,6 +1026,7 @@ llvm::SmallVector<AST *> Parser::getBody()
                 }
                 else{
                     error();
+
                     goto _error;
                 }
                     
@@ -1029,6 +1036,7 @@ llvm::SmallVector<AST *> Parser::getBody()
                 if (u)
                 {
                     error();
+
                     goto _error;
                 }
                 else{
@@ -1044,6 +1052,7 @@ llvm::SmallVector<AST *> Parser::getBody()
             if (!Tok.is(Token::semicolon))
             {
                 error();
+
                 goto _error;
             }
 
@@ -1096,6 +1105,7 @@ llvm::SmallVector<AST *> Parser::getBody()
         }
         default:{
             error();
+
             goto _error;
             break;
         }
