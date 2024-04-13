@@ -162,6 +162,12 @@ void Lexer::next(Token &token)
     }
 }
 
+void Lexer::setBufferPtr(const char *buffer){
+    BufferPtr = buffer;
+}
+
+
+
 void Lexer::formToken(Token &Tok, const char *TokEnd,
                       Token::TokenKind Kind)
 {

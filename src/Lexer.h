@@ -89,6 +89,8 @@ public:
     }
 
     void next(Token &token); // return the next token
+    void setBufferPtr(const char* buffer);
+    const char* getBuffer(){return BufferPtr;};
 
 private:
     void formToken(Token &Result, const char *TokEnd, Token::TokenKind Kind);
