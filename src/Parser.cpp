@@ -145,7 +145,6 @@ DeclarationInt *Parser::parseIntDec()
     Expr *E = nullptr;
     llvm::SmallVector<llvm::StringRef> Vars;
     llvm::SmallVector<Expr *> Values;
-    int count = 1;
     
     if (expect(Token::KW_int)){
         goto _error;
@@ -158,6 +157,18 @@ DeclarationInt *Parser::parseIntDec()
 
     Vars.push_back(Tok.getText());
     advance();
+
+    if (Tok.is(Token::assign))
+    {
+        advance();
+        E = parseExpr();
+        if(E){
+            Values.push_back(E);
+        }
+        else{
+            goto _error;
+        }
+    }
     
     
     while (Tok.is(Token::comma))
@@ -168,35 +179,13 @@ DeclarationInt *Parser::parseIntDec()
         }
             
         Vars.push_back(Tok.getText());
-        count++;
         advance();
-    }
 
-    if (Tok.is(Token::assign))
-    {
-        advance();
-        E = parseExpr();
-        if(E){
-            Values.push_back(E);
-            count--; 
-        }
-        else{
-            goto _error;
-        }
-        
-        while (Tok.is(Token::comma))
-        {   
-            if (count == 0){
-                error();
-
-                goto _error;
-            }
-
+        if(Tok.is(Token::assign)){
             advance();
             E = parseExpr();
             if(E){
                 Values.push_back(E);
-                count--; 
             }
             else{
                 goto _error;
@@ -222,12 +211,10 @@ DeclarationBool *Parser::parseBoolDec()
     Logic *L = nullptr;
     llvm::SmallVector<llvm::StringRef> Vars;
     llvm::SmallVector<Logic *> Values;
-    int count = 1;
     
     if (expect(Token::KW_bool)){
         goto _error;
     }
-
     advance();
     
     if (expect(Token::ident)){
@@ -237,6 +224,18 @@ DeclarationBool *Parser::parseBoolDec()
     Vars.push_back(Tok.getText());
     advance();
 
+    if (Tok.is(Token::assign))
+    {
+        advance();
+        L = parseLogic();
+        if(L){
+            Values.push_back(L);
+        }
+        else{
+            goto _error;
+        }
+    }
+    
     
     while (Tok.is(Token::comma))
     {
@@ -246,35 +245,13 @@ DeclarationBool *Parser::parseBoolDec()
         }
             
         Vars.push_back(Tok.getText());
-        count++;
         advance();
-    }
 
-    if (Tok.is(Token::assign))
-    {
-        advance();
-        L = parseLogic();
-        if(L){
-            Values.push_back(L);
-            count--; 
-        }
-        else{
-            goto _error;
-        }
-        
-        while (Tok.is(Token::comma))
-        {   
-            if (count == 0){
-                error();
-
-                goto _error;
-            }
-
+        if(Tok.is(Token::assign)){
             advance();
             L = parseLogic();
             if(L){
                 Values.push_back(L);
-                count--; 
             }
             else{
                 goto _error;
@@ -285,7 +262,6 @@ DeclarationBool *Parser::parseBoolDec()
     if (expect(Token::semicolon)){
         goto _error;
     }
-
 
     return new DeclarationBool(Vars, Values);
 _error: 
