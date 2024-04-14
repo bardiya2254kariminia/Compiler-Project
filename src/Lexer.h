@@ -30,7 +30,8 @@ public:
         lte,            // <=
         plus_plus,      // ++
         minus_minus,    // --
-        comment,        // /*
+        start_comment,  // /*
+        end_comment,    // */
         comma,          // ,
         semicolon,      // ;
         plus,           // +
@@ -40,6 +41,7 @@ public:
         mod,            // %
         exp,            // ^
         l_paren,        // (
+        minus_paren,    // -(
         r_paren,        // )
         l_brace,        // {
         r_brace,        // }
