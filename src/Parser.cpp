@@ -15,7 +15,7 @@ Program *Parser::parseProgram()
     
     while (!Tok.is(Token::eoi))
     {
-        haveElse = true;
+        // haveElse = true;
         switch (Tok.getKind())
         {
         case Token::KW_int: {
@@ -69,16 +69,31 @@ Program *Parser::parseProgram()
                 }
             }
         
-            Assignment *a;
-            a = parseAssign();
+            Assignment *a_int;
+            Assignment *a_bool;
+            prev_token = Tok;
+            prev_buffer = Lex.getBuffer();
+
+            a_bool = parseBoolAssign();
+
+            if (a_bool){
+                data.push_back(a_bool);
+                break;
+            }
+            Tok = prev_token;
+            Lex.setBufferPtr(prev_buffer);
+
+            a_int = parseIntAssign();
+            if (a_int)
+                data.push_back(a_int);
+            else
+                goto _error;
+                
             if (!Tok.is(Token::semicolon))
             {
                 goto _error;
             }
-            if (a)
-                data.push_back(a);
-            else
-                goto _error;
+            
 
             break;
         }
@@ -129,9 +144,10 @@ Program *Parser::parseProgram()
             break;
         }
         }
-        if(haveElse){
-            advance();
-        }
+        advance();
+        // if(haveElse){
+        //     advance();
+        // }
     }
     return new Program(data);
 _error:
@@ -272,38 +288,62 @@ _error:
 
 
 
-Assignment *Parser::parseAssign()
+Assignment *Parser::parseBoolAssign()
 {
-    Expr *E = nullptr;
     Final *F = nullptr;
     Assignment::AssignKind AK;
     Logic *L = nullptr;
-    Token prev_Tok;
-    const char* prev_buffer;
 
     F = (Final *)(parseFinal());
     if (F == nullptr)
     {
         goto _error;
     }
-    prev_Tok = Tok;
-    prev_buffer = Lex.getBuffer();
     
     if (Tok.is(Token::assign))
     {
         AK = Assignment::Assign;
         advance();
         L = parseLogic();   // check if expr is logical
+
         if(L)
         {
+            if (!Tok.is(Token::semicolon))
+            {
+                goto _error;
+            }
             return new Assignment(F, nullptr, AK, L);
         }
         else
-        {
-            Tok = prev_Tok;
-            Lex.setBufferPtr(prev_buffer);
-            
-        }
+            goto _error;
+    }
+    else
+    {
+        error();
+        goto _error;
+    }
+    
+_error:
+        while (Tok.getKind() != Token::eoi)
+            advance();
+        return nullptr;
+    
+}
+
+Assignment *Parser::parseIntAssign()
+{
+    Expr *E = nullptr;
+    Final *F = nullptr;
+    Assignment::AssignKind AK;
+    F = (Final *)(parseFinal());
+    if (F == nullptr)
+    {
+        goto _error;
+    }
+    
+    if (Tok.is(Token::assign))
+    {
+        AK = Assignment::Assign;
     }
     else if (Tok.is(Token::plus_assign))
     {
@@ -324,7 +364,6 @@ Assignment *Parser::parseAssign()
     else
     {
         error();
-
         goto _error;
     }
     advance();
@@ -340,8 +379,8 @@ _error:
         while (Tok.getKind() != Token::eoi)
             advance();
         return nullptr;
-    
 }
+
 
 UnaryOp *Parser::parseUnary()
 {
@@ -376,6 +415,7 @@ _error:
 Expr *Parser::parseExpr()
 {
     Expr *Left = parseTerm();
+
     if (Left == nullptr)
     {
         goto _error;
@@ -494,7 +534,7 @@ Expr *Parser::parseFinal()
         const char* prev_buffer = Lex.getBuffer();
         Expr* u = parseUnary();
         if(u)
-            Res = u;
+            return u;
         else{
             Tok = prev_tok;
             Lex.setBufferPtr(prev_buffer);
@@ -556,7 +596,10 @@ _error:
 Logic *Parser::parseComparison()
 {
     Logic *Res = nullptr;
-    Expr *Ident = nullptr;
+    Final *Ident = nullptr;
+    Expr *Left = nullptr;
+    Token prev_Tok;
+    const char* prev_buffer;
     if (Tok.is(Token::l_paren)) {
         advance();
         Res = parseLogic();
@@ -581,10 +624,12 @@ Logic *Parser::parseComparison()
         else if(Tok.is(Token::ident)){
             Ident = new Final(Final::Ident, Tok.getText());
         }
-        Expr *Left = parseExpr();
+        prev_Tok = Tok;
+        prev_buffer = Lex.getBuffer();
+        Left = parseExpr();
         if(Left == nullptr)
             goto _error;
-
+        
 
         Comparison::Operator Op;
             if (Tok.is(Token::eq))
@@ -600,13 +645,15 @@ Logic *Parser::parseComparison()
             else if (Tok.is(Token::lte))
                 Op = Comparison::Less_equal;    
             else {
-                    if(Ident){
-                        Res = new Comparison(Ident, nullptr, Comparison::Ident);
-                        advance();
-                        return Res;
-                    }
-                    goto _error;
+                if (Ident){
+                    Tok = prev_Tok;
+                    Lex.setBufferPtr(prev_buffer);
+                    Res = new Comparison(Ident, nullptr, Comparison::Ident);
+                    advance();
+                    return Res;
                 }
+                goto _error;
+            }
             advance();
             Expr *Right = parseExpr();
             if (Right == nullptr)
@@ -902,7 +949,7 @@ ForStmt *Parser::parseFor()
 
     advance();
 
-    First = parseAssign();
+    First = parseIntAssign();
 
     if (First == nullptr)
         goto _error;
@@ -930,7 +977,7 @@ ForStmt *Parser::parseFor()
     prev_token = Tok;
     prev_buffer = Lex.getBuffer();
 
-    ThirdAssign = parseAssign();
+    ThirdAssign = parseIntAssign();
 
     if (ThirdAssign == nullptr){
         Tok = prev_token;
@@ -978,7 +1025,7 @@ _error:
 llvm::SmallVector<AST *> Parser::getBody()
 {
     llvm::SmallVector<AST *> body;
-    haveElse = true;
+    // haveElse = true;
     while (!Tok.is(Token::r_brace))
     {
         switch (Tok.getKind())
@@ -1019,19 +1066,29 @@ llvm::SmallVector<AST *> Parser::getBody()
             }
 
             
-            Assignment *a;
-            a = parseAssign();
-            if (!Tok.is(Token::semicolon))
-            {
-                error();
+            Assignment *a_int;
+            Assignment *a_bool;
+            prev_token = Tok;
+            prev_buffer = Lex.getBuffer();
 
-                goto _error;
+            a_bool = parseBoolAssign();
+
+            if (a_bool){
+                body.push_back(a_bool);
+                break;
             }
+            Tok = prev_token;
+            Lex.setBufferPtr(prev_buffer);
 
-            if (a)
-                body.push_back(a);
+            a_int = parseIntAssign();
+            if (a_int)
+                body.push_back(a_int);
             else
                 goto _error;
+            if (!Tok.is(Token::semicolon))
+            {
+                goto _error;
+            }
 
             break;
         }
@@ -1082,9 +1139,10 @@ llvm::SmallVector<AST *> Parser::getBody()
             break;
         }
         }
-        if(haveElse){
-            advance();
-        }
+        advance();
+        // if(haveElse){
+        //     advance();
+        // }
     }
     return body;
 

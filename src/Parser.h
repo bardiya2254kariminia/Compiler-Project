@@ -43,7 +43,8 @@ class Parser
     Program *parseProgram();
     DeclarationInt *parseIntDec();
     DeclarationBool *parseBoolDec();
-    Assignment *parseAssign();
+    Assignment *parseBoolAssign();
+    Assignment *parseIntAssign();
     UnaryOp *parseUnary();
     Expr *parseExpr();
     Expr *parseTerm();
