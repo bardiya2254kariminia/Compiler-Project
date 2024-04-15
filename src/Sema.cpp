@@ -5,7 +5,8 @@
 
 namespace nms{
 class InputCheck : public ASTVisitor {
-  llvm::StringSet<> Scope; // StringSet to store declared variables
+  llvm::StringSet<> IntScope; // StringSet to store declared int variables
+  llvm::StringSet<> BoolScope;
   bool HasError; // Flag to indicate if an error occurred
 
   enum ErrorType { Twice, Not }; // Enum to represent error types: Twice - variable declared twice, Not - variable not declared
@@ -40,7 +41,7 @@ public:
   virtual void visit(Final &Node) override {
     if (Node.getKind() == Final::Ident) {
       // Check if identifier is in the scope
-      if (Scope.find(Node.getVal()) == Scope.end())
+      if (IntScope.find(Node.getVal()) == IntScope.end() && BoolScope.find(Node.getVal()) == BoolScope.end())
         error(Not, Node.getVal());
     }
   };
@@ -48,8 +49,9 @@ public:
   // Visit function for BinaryOp nodes
   virtual void visit(BinaryOp &Node) override {
     Expr* right = Node.getRight();
-    if (Node.getLeft())
-      Node.getLeft()->accept(*this);
+    Expr* left = Node.getLeft();
+    if (left)
+      left->accept(*this);
     else
       HasError = true;
 
@@ -57,6 +59,23 @@ public:
       right->accept(*this);
     else
       HasError = true;
+
+    Final* l = (Final*)left;
+    if (l->getKind() == Final::Ident){
+      if (BoolScope.find(l->getVal()) != BoolScope.end()) {
+        llvm::errs() << "Cannot use binary operation on a boolean variable. " << "\n";
+        HasError = true;
+      }
+    }
+
+    Final* r = (Final*)right;
+    if (r->getKind() == Final::Ident){
+      if (BoolScope.find(r->getVal()) != BoolScope.end()) {
+        llvm::errs() << "Cannot use binary operation on a boolean variable. " << "\n";
+        HasError = true;
+      }
+    }
+    
 
     if (Node.getOperator() == BinaryOp::Operator::Div || Node.getOperator() == BinaryOp::Operator::Mod ) {
       Final* f = (Final*)right;
@@ -84,6 +103,8 @@ public:
   // Visit function for Assignment nodes
   virtual void visit(Assignment &Node) override {
     Final *dest = Node.getLeft();
+    Expr *RightExpr;
+    Logic *RightLogic;
 
     dest->accept(*this);
 
@@ -92,16 +113,36 @@ public:
         HasError = true;
     }
 
-    Expr *Right = Node.getRight();
-    if (Right)
-      Right->accept(*this);
-    else{
-      HasError=true;
+    if (BoolScope.find(dest->getVal()) != BoolScope.end()) {
+      RightLogic = Node.getRightLogic();
+      if (RightLogic){
+        RightLogic->accept(*this);
+        if(Node.getAssignKind() != Assignment::AssignKind::Assign){
+          llvm::errs() << "Cannot use mathematical operation on boolean variable. " << "\n";
+          HasError = true;
+        }
+      }
+      else{
+        llvm::errs() << "Cannot assign integer value to a boolean variable. " << "\n";
+        HasError = true;
+      }
     }
+      
+    else if (IntScope.find(dest->getVal()) != IntScope.end()){
+      RightExpr = Node.getRightExpr();
+      if (RightExpr){
+        RightExpr->accept(*this);
+      }
+      else{
+        llvm::errs() << "Cannot assign boolean value to an int variable. " << "\n";
+        HasError = true;
+      }
+    }
+    
+    
+    if (Node.getAssignKind() == Assignment::AssignKind::Slash_assign) {
 
-    if (Node.getAssignKind() == Assignment::AssignKind::Slash_assign || Node.getAssignKind() == Assignment::AssignKind::Mod_assign) {
-
-      Final* f = (Final*)(Right);
+      Final* f = (Final*)(RightExpr);
       if (f)
       {
         if (f->getKind() == Final::ValueKind::Number) {
@@ -113,17 +154,27 @@ public:
         }
         }
       }
-      
     }
   };
 
-  virtual void visit(Declaration &Node) override {
-    for (llvm::SmallVector<llvm::StringRef, 8>::const_iterator I = Node.varBegin(), E = Node.varEnd(); I != E;
+  virtual void visit(DeclarationInt &Node) override {
+    for (llvm::SmallVector<llvm::StringRef>::const_iterator I = Node.varBegin(), E = Node.varEnd(); I != E;
          ++I) {
-      if (!Scope.insert(*I).second)
+      if (!IntScope.insert(*I).second)
         error(Twice, *I); // If the insertion fails (element already exists in Scope), report a "Twice" error
     }
-    for (llvm::SmallVector<Expr *, 8>::const_iterator I = Node.valBegin(), E = Node.valEnd(); I != E; ++I){
+    for (llvm::SmallVector<Expr *>::const_iterator I = Node.valBegin(), E = Node.valEnd(); I != E; ++I){
+      (*I)->accept(*this); // If the Declaration node has an expression, recursively visit the expression node
+    }
+  };
+
+  virtual void visit(DeclarationBool &Node) override {
+    for (llvm::SmallVector<llvm::StringRef>::const_iterator I = Node.varBegin(), E = Node.varEnd(); I != E;
+         ++I) {
+      if (!BoolScope.insert(*I).second)
+        error(Twice, *I); // If the insertion fails (element already exists in Scope), report a "Twice" error
+    }
+    for (llvm::SmallVector<Logic *>::const_iterator I = Node.valBegin(), E = Node.valEnd(); I != E; ++I){
       (*I)->accept(*this); // If the Declaration node has an expression, recursively visit the expression node
     }
   };
@@ -134,6 +185,15 @@ public:
     }
     if(Node.getRight()){
       Node.getRight()->accept(*this);
+    }
+    else{
+      if (Node.getOperator() == Comparison::Ident){
+        Final* F = (Final*)(Node.getLeft());
+        if (BoolScope.find(F->getVal()) == BoolScope.end()) {
+          llvm::errs() << "you need a boolean varaible to assign. " << "\n";
+          HasError = true;
+        } 
+      }
     }
   };
 
@@ -146,17 +206,34 @@ public:
     }
   };
 
+  virtual void visit(UnaryOp &Node) override {
+    if (IntScope.find(Node.getIdent()) == IntScope.end())
+        error(Not, Node.getIdent());
+  };
+
+  virtual void visit(NegExpr &Node) override {
+    Expr *expr = Node.getExpr();
+    (*expr).accept(*this);
+  };
+
+  virtual void visit(PrintStmt &Node) override {
+    // Check if identifier is in the scope
+    if (IntScope.find(Node.getVar()) == IntScope.end() && BoolScope.find(Node.getVar()) == BoolScope.end())
+      error(Not, Node.getVar());
+    
+  };
+
   virtual void visit(IfStmt &Node) override {
     Logic *l = Node.getCond();
     (*l).accept(*this);
 
-    for (llvm::SmallVector<Assignment *, 8>::const_iterator I = Node.begin(), E = Node.end(); I != E; ++I) {
+    for (llvm::SmallVector<AST *>::const_iterator I = Node.begin(), E = Node.end(); I != E; ++I) {
       (*I)->accept(*this);
     }
-    for (llvm::SmallVector<Assignment *, 8>::const_iterator I = Node.beginElse(), E = Node.endElse(); I != E; ++I){
+    for (llvm::SmallVector<AST *>::const_iterator I = Node.beginElse(), E = Node.endElse(); I != E; ++I){
       (*I)->accept(*this);
     }
-    for (llvm::SmallVector<elifStmt *, 8>::const_iterator I = Node.beginElif(), E = Node.endElif(); I != E; ++I){
+    for (llvm::SmallVector<elifStmt *>::const_iterator I = Node.beginElif(), E = Node.endElif(); I != E; ++I){
       (*I)->accept(*this);
     }
   };
@@ -165,18 +242,48 @@ public:
     Logic* l = Node.getCond();
     (*l).accept(*this);
 
-    for (llvm::SmallVector<Assignment *, 8>::const_iterator I = Node.begin(), E = Node.end(); I != E; ++I) {
+    for (llvm::SmallVector<AST *>::const_iterator I = Node.begin(), E = Node.end(); I != E; ++I) {
       (*I)->accept(*this);
     }
   };
 
-  virtual void visit(IterStmt &Node) override {
+  virtual void visit(WhileStmt &Node) override {
     Logic* l = Node.getCond();
     (*l).accept(*this);
 
-    for (llvm::SmallVector<Assignment *, 8>::const_iterator I = Node.begin(), E = Node.end(); I != E; ++I) {
+    for (llvm::SmallVector<AST *>::const_iterator I = Node.begin(), E = Node.end(); I != E; ++I) {
       (*I)->accept(*this);
     }
+  };
+
+  virtual void visit(ForStmt &Node) override {
+    Assignment *first = Node.getFirst();
+    (*first).accept(*this);
+
+    Comparison *second = Node.getSecond();
+    (*second).accept(*this);
+    if (second->getOperator() == Comparison::False || second->getOperator() == Comparison::True || second->getOperator() == Comparison::Ident){
+      llvm::errs() << "The condition shall be a comparsion. " << "\n";
+      HasError = true;
+    }
+      
+
+    Assignment *assign = Node.getThirdAssign();
+    if(assign)
+      (*assign).accept(*this);
+    else{
+      UnaryOp *unary = Node.getThirdUnary();
+      (*unary).accept(*this);
+    }
+      
+
+    for (llvm::SmallVector<AST *>::const_iterator I = Node.begin(), E = Node.end(); I != E; ++I) {
+      (*I)->accept(*this);
+    }
+  };
+
+  virtual void visit(SignedNumber &Node) override {
+    Node.accept(*this);
   };
 
 };

@@ -32,7 +32,8 @@ public:
   // Virtual visit functions for each AST node type
   virtual void visit(AST &) {}               // Visit the base AST node
   virtual void visit(Expr &) {}              // Visit the expression node
-  virtual void visit(Program &) {}           // Visit the group of expressions node
+  virtual void visit(Logic &) {}             // Visit the Logic node
+  virtual void visit(Program &) {};          // Visit the group of expressions node
   virtual void visit(Final &) = 0;           // Visit the Final node
   virtual void visit(BinaryOp &) = 0;        // Visit the binary operation node
   virtual void visit(UnaryOp &) = 0;
@@ -41,7 +42,6 @@ public:
   virtual void visit(Assignment &) = 0;      // Visit the assignment expression node
   virtual void visit(DeclarationInt &) = 0;     // Visit the variable declaration node
   virtual void visit(DeclarationBool &) = 0;     // Visit the variable declaration node
-  virtual void visit(Logic &) {}             // Visit the Logic node
   virtual void visit(Comparison &) = 0;      // Visit the Comparison node
   virtual void visit(LogicalExpr &) = 0;     // Visit the LogicalExpr node
   virtual void visit(IfStmt &) = 0;          // Visit the IfStmt node
