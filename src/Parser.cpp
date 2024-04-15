@@ -363,7 +363,6 @@ Assignment *Parser::parseIntAssign()
     }
     else
     {
-        error();
         goto _error;
     }
     advance();
@@ -914,9 +913,7 @@ WhileStmt *Parser::parseWhile()
     advance();
 
     Body = getBody();
-    if(!Body.empty())
-        advance();
-    else
+    if(Body.empty())
         goto _error;
         
 
@@ -983,6 +980,7 @@ ForStmt *Parser::parseFor()
     if (ThirdAssign == nullptr){
         Tok = prev_token;
         Lex.setBufferPtr(prev_buffer);
+
         ThirdUnary = parseUnary();
         if (ThirdUnary == nullptr){
             goto _error;
@@ -1009,9 +1007,7 @@ ForStmt *Parser::parseFor()
 
     Body = getBody();
 
-    if (!Body.empty())
-        advance();
-    else
+    if (Body.empty())
         goto _error;
 
     return new ForStmt(First, Second, ThirdAssign, ThirdUnary, Body);
@@ -1041,7 +1037,7 @@ _error:
 llvm::SmallVector<AST *> Parser::getBody()
 {
     llvm::SmallVector<AST *> body;
-    while (!Tok.is(Token::r_brace))
+    while (!Tok.is(Token::r_brace) && !Tok.is(Token::eoi))
     {
         switch (Tok.getKind())
         {
@@ -1149,7 +1145,6 @@ llvm::SmallVector<AST *> Parser::getBody()
             parseComment();
             if (!Tok.is(Token::end_comment))
                 goto _error;
-            advance();
             break;
         }
         default:{
@@ -1160,6 +1155,7 @@ llvm::SmallVector<AST *> Parser::getBody()
         }
         }
         advance();
+
     }
     return body;
 
