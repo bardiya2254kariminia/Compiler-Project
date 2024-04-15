@@ -1,6 +1,5 @@
 #include "Parser.h"
 
-bool haveElse;
 
 // main point is that the whole input has been consumed
 Program *Parser::parse()
@@ -15,7 +14,6 @@ Program *Parser::parseProgram()
     
     while (!Tok.is(Token::eoi))
     {
-        // haveElse = true;
         switch (Tok.getKind())
         {
         case Token::KW_int: {
@@ -51,7 +49,6 @@ Program *Parser::parseProgram()
                     break;
                 }
                 else{
-                    error();
                     goto _error;
                     
                 }
@@ -60,7 +57,6 @@ Program *Parser::parseProgram()
             {
                 if (u)
                 {
-                    error();
                     goto _error;
                 }
                 else{
@@ -84,15 +80,16 @@ Program *Parser::parseProgram()
             Lex.setBufferPtr(prev_buffer);
 
             a_int = parseIntAssign();
+            if (!Tok.is(Token::semicolon))
+            {
+                goto _error;
+            }
             if (a_int)
                 data.push_back(a_int);
             else
                 goto _error;
                 
-            if (!Tok.is(Token::semicolon))
-            {
-                goto _error;
-            }
+            
             
 
             break;
@@ -137,6 +134,12 @@ Program *Parser::parseProgram()
             }
             break;
         }
+        case Token::start_comment: {
+            parseComment();
+            if (!Tok.is(Token::end_comment))
+                goto _error;
+            break;
+        }
         default: {
             error();
 
@@ -145,9 +148,7 @@ Program *Parser::parseProgram()
         }
         }
         advance();
-        // if(haveElse){
-        //     advance();
-        // }
+        
     }
     return new Program(data);
 _error:
@@ -319,7 +320,6 @@ Assignment *Parser::parseBoolAssign()
     }
     else
     {
-        error();
         goto _error;
     }
     
@@ -559,16 +559,19 @@ Expr *Parser::parseFinal()
             advance();
             break;
         }
-        else if(Tok.getKind() == Token::l_paren){
-            advance();
-            Expr *math_expr = parseExpr();
-            if(math_expr == nullptr)
-                goto _error;
-            Res = new NegExpr(math_expr);
-            if (!consume(Token::r_paren))
-                break;
-        }
         goto _error;
+    }
+    case Token::minus_paren:{
+        advance();
+        Expr *math_expr = parseExpr();
+        if(math_expr == nullptr)
+            goto _error;
+        Res = new NegExpr(math_expr);
+        if (!consume(Token::r_paren))
+            break;
+        
+        goto _error;
+
     }
     case Token::l_paren:{
         advance();
@@ -712,9 +715,14 @@ IfStmt *Parser::parseIf()
     llvm::SmallVector<AST *> ifStmts;
     llvm::SmallVector<AST *> elseStmts;
     llvm::SmallVector<elifStmt *> elifStmts;
+    llvm::SmallVector<AST *> Stmts;
     Logic *Cond = nullptr;
+    Token prev_token_if;
+    const char* prev_buffer_if;
+    Token prev_token_elif;
+    const char* prev_buffer_elif;
+    bool hasElif = false;
 
-    haveElse = false;
 
     if (expect(Token::KW_if)){
         goto _error;
@@ -748,14 +756,17 @@ IfStmt *Parser::parseIf()
     
     ifStmts = getBody();
         
-    if(!ifStmts.empty())
-        advance();
-    else
+    if(ifStmts.empty())
         goto _error;
+    
+    prev_token_if = Tok;
+    prev_buffer_if = Lex.getBuffer();
+    
+    advance();
     
 
     while (Tok.is(Token::KW_elseif)) {
-
+        hasElif = true;
         advance();
         
         if (expect(Token::l_paren)){
@@ -783,7 +794,9 @@ IfStmt *Parser::parseIf()
 
         advance();
 
-        llvm::SmallVector<AST *> Stmts = getBody();
+        Stmts = getBody();
+        prev_token_elif = Tok;
+        prev_buffer_elif = Lex.getBuffer();
         
         if(!Stmts.empty())
             advance();
@@ -792,32 +805,12 @@ IfStmt *Parser::parseIf()
         
         elifStmt *elif = new elifStmt(Cond, Stmts);
         elifStmts.push_back(elif);
-        advance();
+
     }
+
 
     if (Tok.is(Token::KW_else))
     {
-        // haveElse = true;
-
-        advance();
-
-        if (expect(Token::l_paren)){
-            goto _error;
-        }
-
-        advance();
-
-        Cond = parseLogic();
-
-        if (Cond == nullptr)
-        {
-            goto _error;
-        }
-
-        if (expect(Token::r_paren)){
-            goto _error;
-        }
-
         advance();
 
         if (expect(Token::l_brace)){
@@ -828,11 +821,20 @@ IfStmt *Parser::parseIf()
 
         elseStmts = getBody();
         
-        if(!elseStmts.empty())
-            advance();
-        else
+        if(elseStmts.empty())
             goto _error;
 
+    }
+    if(!Tok.is(Token::r_brace)){
+        if(hasElif){
+            Tok = prev_token_elif;
+            Lex.setBufferPtr(prev_buffer_elif);
+        }
+        else{
+            Tok = prev_token_if;
+            Lex.setBufferPtr(prev_buffer_if);
+        }
+        
     }
 
     return new IfStmt(Cond, ifStmts, elseStmts, elifStmts);
@@ -861,14 +863,13 @@ PrintStmt *Parser::parsePrint()
     }
     Var = Tok.getText();
     advance();
-    if (expect(Token::l_paren)){
+    if (expect(Token::r_paren)){
         goto _error;
     }
     advance();
     if (expect(Token::semicolon)){
         goto _error;
     }
-    advance();
     return new PrintStmt(Var);
 
 _error:
@@ -1022,10 +1023,24 @@ _error:
 
 }
 
+void Parser::parseComment()
+{
+    if (expect(Token::start_comment)) {
+        goto _error;
+    }
+    advance();
+
+    while (!Tok.isOneOf(Token::end_comment, Token::eoi)) advance();
+
+    return;
+_error: 
+    while (Tok.getKind() != Token::eoi)
+        advance();
+}
+
 llvm::SmallVector<AST *> Parser::getBody()
 {
     llvm::SmallVector<AST *> body;
-    // haveElse = true;
     while (!Tok.is(Token::r_brace))
     {
         switch (Tok.getKind())
@@ -1044,7 +1059,6 @@ llvm::SmallVector<AST *> Parser::getBody()
                     break;
                 }
                 else{
-                    error();
 
                     goto _error;
                 }
@@ -1054,7 +1068,6 @@ llvm::SmallVector<AST *> Parser::getBody()
             {
                 if (u)
                 {
-                    error();
 
                     goto _error;
                 }
@@ -1132,6 +1145,13 @@ llvm::SmallVector<AST *> Parser::getBody()
             }
             break;
         }
+        case Token::start_comment: {
+            parseComment();
+            if (!Tok.is(Token::end_comment))
+                goto _error;
+            advance();
+            break;
+        }
         default:{
             error();
 
@@ -1140,9 +1160,6 @@ llvm::SmallVector<AST *> Parser::getBody()
         }
         }
         advance();
-        // if(haveElse){
-        //     advance();
-        // }
     }
     return body;
 
