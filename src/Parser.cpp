@@ -721,6 +721,7 @@ IfStmt *Parser::parseIf()
     Token prev_token_elif;
     const char* prev_buffer_elif;
     bool hasElif = false;
+    bool hasElse = false;
 
 
     if (expect(Token::KW_if)){
@@ -810,6 +811,7 @@ IfStmt *Parser::parseIf()
 
     if (Tok.is(Token::KW_else))
     {
+        hasElse = true;
         advance();
 
         if (expect(Token::l_brace)){
@@ -824,18 +826,15 @@ IfStmt *Parser::parseIf()
             goto _error;
 
     }
-    if(!Tok.is(Token::r_brace)){
-        if(hasElif){
-            Tok = prev_token_elif;
-            Lex.setBufferPtr(prev_buffer_elif);
-        }
-        else{
-            Tok = prev_token_if;
-            Lex.setBufferPtr(prev_buffer_if);
-        }
-        
+    if(hasElif && !hasElse){
+        Tok = prev_token_elif;
+        Lex.setBufferPtr(prev_buffer_elif);
     }
-
+    else if(!hasElif && !hasElse){
+        Tok = prev_token_if;
+        Lex.setBufferPtr(prev_buffer_if);
+    }
+        
     return new IfStmt(Cond, ifStmts, elseStmts, elifStmts);
 
 _error:
@@ -1037,7 +1036,7 @@ _error:
 llvm::SmallVector<AST *> Parser::getBody()
 {
     llvm::SmallVector<AST *> body;
-    while (!Tok.is(Token::r_brace) && !Tok.is(Token::eoi))
+    while (!Tok.is(Token::r_brace))
     {
         switch (Tok.getKind())
         {
@@ -1157,7 +1156,9 @@ llvm::SmallVector<AST *> Parser::getBody()
         advance();
 
     }
-    return body;
+    if(Tok.is(Token::r_brace)){
+        return body;
+    }
 
 _error:
     while (Tok.getKind() != Token::eoi)
