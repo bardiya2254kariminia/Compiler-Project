@@ -89,9 +89,6 @@ Program *Parser::parseProgram()
             else
                 goto _error;
                 
-            
-            
-
             break;
         }
         case Token::KW_if: {
@@ -600,6 +597,7 @@ Logic *Parser::parseComparison()
     Logic *Res = nullptr;
     Final *Ident = nullptr;
     Expr *Left = nullptr;
+    Expr *Right = nullptr;
     Token prev_Tok;
     const char* prev_buffer;
     if (Tok.is(Token::l_paren)) {
@@ -657,7 +655,7 @@ Logic *Parser::parseComparison()
                 goto _error;
             }
             advance();
-            Expr *Right = parseExpr();
+            Right = parseExpr();
             if (Right == nullptr)
             {
                 goto _error;
@@ -677,6 +675,7 @@ _error:
 Logic *Parser::parseLogic()
 {
     Logic *Left = parseComparison();
+    Logic *Right;
     if (Left == nullptr)
     {
         goto _error;
@@ -694,7 +693,7 @@ Logic *Parser::parseLogic()
             goto _error;
         }
         advance();
-        Logic *Right = parseComparison();
+        Right = parseComparison();
         if (Right == nullptr)
         {
             goto _error;

@@ -63,7 +63,7 @@ public:
     Final* l = (Final*)left;
     if (l->getKind() == Final::Ident){
       if (BoolScope.find(l->getVal()) != BoolScope.end()) {
-        llvm::errs() << "Cannot use binary operation on a boolean variable. " << "\n";
+        llvm::errs() << "Cannot use binary operation on a boolean variable: " << l->getVal() << "\n";
         HasError = true;
       }
     }
@@ -71,7 +71,7 @@ public:
     Final* r = (Final*)right;
     if (r->getKind() == Final::Ident){
       if (BoolScope.find(r->getVal()) != BoolScope.end()) {
-        llvm::errs() << "Cannot use binary operation on a boolean variable. " << "\n";
+        llvm::errs() << "Cannot use binary operation on a boolean variable: " << r->getVal() << "\n";
         HasError = true;
       }
     }
@@ -89,15 +89,7 @@ public:
         }
       }
     }
-
-    if (Node.getOperator() == BinaryOp::Operator::Exp ) {
-      Final* f = (Final*)right;
-
-      if (f->getKind() == Final::ValueKind::Ident) {
-        llvm::errs() << "The exponent only allowed to be a constant.\n";
-        HasError = true;
-      }
-    }
+    
   };
 
   // Visit function for Assignment nodes
@@ -109,7 +101,7 @@ public:
     dest->accept(*this);
 
     if (dest->getKind() == Final::Number) {
-        llvm::errs() << "Assignment destination must be an identifier.";
+        llvm::errs() << "Assignment destination must be an identifier, not a number.";
         HasError = true;
     }
 
@@ -118,25 +110,45 @@ public:
       if (RightLogic){
         RightLogic->accept(*this);
         if(Node.getAssignKind() != Assignment::AssignKind::Assign){
-          llvm::errs() << "Cannot use mathematical operation on boolean variable. " << "\n";
+          llvm::errs() << "Cannot use mathematical operation on boolean variable: " << dest->getVal() << "\n";
           HasError = true;
         }
       }
       else{
-        llvm::errs() << "Cannot assign integer value to a boolean variable. " << "\n";
+        llvm::errs() << "you should assign a boolean value to boolean variable: " << dest->getVal() << "\n";
         HasError = true;
       }
     }
       
     else if (IntScope.find(dest->getVal()) != IntScope.end()){
       RightExpr = Node.getRightExpr();
+      RightLogic = Node.getRightLogic();
       if (RightExpr){
         RightExpr->accept(*this);
       }
+      else if(RightLogic){
+        RightLogic->accept(*this);
+        Comparison* RL = (Comparison*) RightLogic;
+        if (RL){
+          if (RL->getOperator() == Comparison::Ident){
+            Final* F = (Final*)(RL->getLeft());
+            if (IntScope.find(F->getVal()) == IntScope.end()) {
+              llvm::errs() << "you should assign an integer value to an integer variable: " << dest->getVal() << "\n";
+              HasError = true;
+            } 
+          }
+          else{
+            llvm::errs() << "you should assign an integer value to an integer variable: " << dest->getVal() << "\n";
+            HasError = true;
+          }
+        }
+        
+      }
       else{
-        llvm::errs() << "Cannot assign boolean value to an int variable. " << "\n";
+        llvm::errs() << "you should assign an integer value to an integer variable: " << dest->getVal() << "\n";
         HasError = true;
       }
+        
     }
     
     
@@ -158,25 +170,38 @@ public:
   };
 
   virtual void visit(DeclarationInt &Node) override {
-    for (llvm::SmallVector<llvm::StringRef>::const_iterator I = Node.varBegin(), E = Node.varEnd(); I != E;
-         ++I) {
-      if (!IntScope.insert(*I).second)
-        error(Twice, *I); // If the insertion fails (element already exists in Scope), report a "Twice" error
-    }
     for (llvm::SmallVector<Expr *>::const_iterator I = Node.valBegin(), E = Node.valEnd(); I != E; ++I){
       (*I)->accept(*this); // If the Declaration node has an expression, recursively visit the expression node
+    }
+    for (llvm::SmallVector<llvm::StringRef>::const_iterator I = Node.varBegin(), E = Node.varEnd(); I != E;
+         ++I) {
+      if(BoolScope.find(*I) != BoolScope.end()){
+        llvm::errs() << "Variable " << *I << " is already declared as an boolean" << "\n";
+        HasError = true; 
+      }
+      else{
+        if (!IntScope.insert(*I).second)
+          error(Twice, *I); // If the insertion fails (element already exists in Scope), report a "Twice" error
+      }
     }
   };
 
   virtual void visit(DeclarationBool &Node) override {
-    for (llvm::SmallVector<llvm::StringRef>::const_iterator I = Node.varBegin(), E = Node.varEnd(); I != E;
-         ++I) {
-      if (!BoolScope.insert(*I).second)
-        error(Twice, *I); // If the insertion fails (element already exists in Scope), report a "Twice" error
-    }
     for (llvm::SmallVector<Logic *>::const_iterator I = Node.valBegin(), E = Node.valEnd(); I != E; ++I){
       (*I)->accept(*this); // If the Declaration node has an expression, recursively visit the expression node
     }
+    for (llvm::SmallVector<llvm::StringRef>::const_iterator I = Node.varBegin(), E = Node.varEnd(); I != E;
+         ++I) {
+      if(IntScope.find(*I) != IntScope.end()){
+        llvm::errs() << "Variable " << *I << " is already declared as an integer" << "\n";
+        HasError = true; 
+      }
+      else{
+        if (!BoolScope.insert(*I).second)
+          error(Twice, *I); // If the insertion fails (element already exists in Scope), report a "Twice" error
+      }
+    }
+    
   };
 
   virtual void visit(Comparison &Node) override {
@@ -190,7 +215,25 @@ public:
       if (Node.getOperator() == Comparison::Ident){
         Final* F = (Final*)(Node.getLeft());
         if (BoolScope.find(F->getVal()) == BoolScope.end()) {
-          llvm::errs() << "you need a boolean varaible to assign. " << "\n";
+          llvm::errs() << "you need a boolean varaible to compare or assign. " << "\n";
+          HasError = true;
+        } 
+      }
+    }
+
+    if (Node.getOperator() != Comparison::True && Node.getOperator() != Comparison::False && Node.getOperator() != Comparison::Ident){
+      Final* L = (Final*)(Node.getLeft());
+      if(L){
+        if (L->getKind() == Final::ValueKind::Ident && IntScope.find(L->getVal()) == IntScope.end()) {
+          llvm::errs() << "you can only compare a defined integer variable. " << "\n";
+          HasError = true;
+        } 
+      }
+      
+      Final* R = (Final*)(Node.getRight());
+      if(R){
+        if (R->getKind() == Final::ValueKind::Ident && IntScope.find(R->getVal()) == IntScope.end()) {
+          llvm::errs() << "you can only compare a defined integer variable. " << "\n";
           HasError = true;
         } 
       }
@@ -207,8 +250,10 @@ public:
   };
 
   virtual void visit(UnaryOp &Node) override {
-    if (IntScope.find(Node.getIdent()) == IntScope.end())
-        error(Not, Node.getIdent());
+    if (IntScope.find(Node.getIdent()) == IntScope.end()){
+      llvm::errs() << "Variable "<<Node.getIdent() << " is not a defined integer variable." << "\n";
+      HasError = true;
+    }
   };
 
   virtual void visit(NegExpr &Node) override {
@@ -218,8 +263,10 @@ public:
 
   virtual void visit(PrintStmt &Node) override {
     // Check if identifier is in the scope
-    if (IntScope.find(Node.getVar()) == IntScope.end() && BoolScope.find(Node.getVar()) == BoolScope.end())
+    if (IntScope.find(Node.getVar()) == IntScope.end() && BoolScope.find(Node.getVar()) == BoolScope.end()){
       error(Not, Node.getVar());
+      HasError = true;
+    }
     
   };
 

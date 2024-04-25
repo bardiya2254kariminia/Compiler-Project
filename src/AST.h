@@ -338,7 +338,7 @@ private:
   Operator Op;                               // Kind of assignment
 
 public:
-  Comparison(Expr *L, Expr *R, Operator Opm) : Left(L), Right(R), Op(Op) {}
+  Comparison(Expr *L, Expr *R, Operator Op) : Left(L), Right(R), Op(Op) {}
 
   Expr *getLeft() { return Left; }
 
