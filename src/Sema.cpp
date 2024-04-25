@@ -215,7 +215,7 @@ public:
       if (Node.getOperator() == Comparison::Ident){
         Final* F = (Final*)(Node.getLeft());
         if (BoolScope.find(F->getVal()) == BoolScope.end()) {
-          llvm::errs() << "you need a boolean varaible to compare or assign. " << "\n";
+          llvm::errs() << "you need a boolean varaible to compare or assign: "<< F->getVal() << "\n";
           HasError = true;
         } 
       }
@@ -225,7 +225,7 @@ public:
       Final* L = (Final*)(Node.getLeft());
       if(L){
         if (L->getKind() == Final::ValueKind::Ident && IntScope.find(L->getVal()) == IntScope.end()) {
-          llvm::errs() << "you can only compare a defined integer variable. " << "\n";
+          llvm::errs() << "you can only compare a defined integer variable: "<< L->getVal() << "\n";
           HasError = true;
         } 
       }
@@ -233,7 +233,7 @@ public:
       Final* R = (Final*)(Node.getRight());
       if(R){
         if (R->getKind() == Final::ValueKind::Ident && IntScope.find(R->getVal()) == IntScope.end()) {
-          llvm::errs() << "you can only compare a defined integer variable. " << "\n";
+          llvm::errs() << "you can only compare a defined integer variable: "<< R->getVal() << "\n";
           HasError = true;
         } 
       }
@@ -263,10 +263,8 @@ public:
 
   virtual void visit(PrintStmt &Node) override {
     // Check if identifier is in the scope
-    if (IntScope.find(Node.getVar()) == IntScope.end() && BoolScope.find(Node.getVar()) == BoolScope.end()){
+    if (IntScope.find(Node.getVar()) == IntScope.end() && BoolScope.find(Node.getVar()) == BoolScope.end())
       error(Not, Node.getVar());
-      HasError = true;
-    }
     
   };
 
@@ -310,7 +308,7 @@ public:
     Comparison *second = Node.getSecond();
     (*second).accept(*this);
     if (second->getOperator() == Comparison::False || second->getOperator() == Comparison::True || second->getOperator() == Comparison::Ident){
-      llvm::errs() << "The condition shall be a comparsion. " << "\n";
+      llvm::errs() << "The second part of for shall be a comparsion. " << "\n";
       HasError = true;
     }
       
