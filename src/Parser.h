@@ -25,7 +25,7 @@ class Parser
     {
         if (Tok.getKind() != Kind)
         {
-            error();
+            //error();
             return true;
         }
         return false;
