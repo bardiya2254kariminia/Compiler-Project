@@ -15,15 +15,18 @@ ns{
   {
     Module *M;
     IRBuilder<> Builder;
-    Type *VoidTy;
+    Type *Int1Ty;
     Type *Int32Ty;
     Type *Int8PtrTy;
     Type *Int8PtrPtrTy;
     Constant *Int32Zero;
     Constant *Int32One;
+    Constant *Int1False;
+    Constant *Int1True;
 
     Value *V;
-    StringMap<AllocaInst *> nameMap;
+    StringMap<AllocaInst *> nameMapInt;
+    StringMap<AllocaInst *> nameMapBool;
 
     FunctionType *CompilerWriteFnTy;
     Function *CompilerWriteFn;
@@ -33,12 +36,16 @@ ns{
     ToIRVisitor(Module *M) : M(M), Builder(M->getContext())
     {
       // Initialize LLVM types and constants.
-      VoidTy = Type::getVoidTy(M->getContext());
+      Int1Ty = Type::getInt1Ty(M->getContext());
       Int32Ty = Type::getInt32Ty(M->getContext());
       Int8PtrTy = Type::getInt8PtrTy(M->getContext());
       Int8PtrPtrTy = Int8PtrTy->getPointerTo();
+
+      Int1False = ConstantInt::getFalse(Int1Ty);
+      Int1True = ConstantInt::getTrue(Int1Ty);
       Int32Zero = ConstantInt::get(Int32Ty, 0, true);
       Int32One = ConstantInt::get(Int32Ty, 1, true);
+
       // Create a function type for the "compiler_write" function.
       CompilerWriteFnTy = FunctionType::get(VoidTy, {Int32Ty}, false);
       // Create a function declaration for the "compiler_write" function.
@@ -73,18 +80,101 @@ ns{
     }
     };
 
+    virtual void visit(DeclarationInt &Node) override
+    {
+      llvm::SmallVector<Value *, 8> vals;
+
+      llvm::SmallVector<Expr *, 8>::const_iterator E = Node.valBegin();
+      for (llvm::SmallVector<llvm::StringRef, 8>::const_iterator Var = Node.varBegin(), End = Node.varEnd(); Var != End; ++Var){
+        if (E<Node.valEnd())
+        {
+          (*E)->accept(*this); // If the Declaration node has an expression, recursively visit the expression node
+          vals.push_back(V);
+        }
+        else 
+        {
+          vals.push_back(nullptr);
+        }
+        E++;
+      }
+      StringRef Var;
+      Value* val;
+      llvm::SmallVector<Value *, 8>::const_iterator itVal = vals.begin();
+      for (llvm::SmallVector<llvm::StringRef, 8>::const_iterator S = Node.varBegin(), End = Node.varEnd(); S != End; ++S){
+        
+        Var = *S;
+
+        // Create an alloca instruction to allocate memory for the variable.
+        nameMapInt[Var] = Builder.CreateAlloca(Int32Ty);
+        
+        // Store the initial value (if any) in the variable's memory location.
+        if (*itVal != nullptr)
+        {
+          Builder.CreateStore(*itVal, nameMapInt[Var]);
+        }
+        else
+        {
+          Builder.CreateStore(Int32Zero, nameMapInt[Var]);
+        }
+        itVal++;
+      }
+    };
+
+    virtual void visit(DeclarationBool &Node) override
+    {
+      llvm::SmallVector<Value *, 8> vals;
+
+      llvm::SmallVector<Logic *, 8>::const_iterator L = Node.valBegin();
+      for (llvm::SmallVector<llvm::StringRef, 8>::const_iterator Var = Node.varBegin(), End = Node.varEnd(); Var != End; ++Var){
+        if (L<Node.valEnd())
+        {
+          (*L)->accept(*this); // If the Declaration node has an expression, recursively visit the expression node
+          vals.push_back(V);
+        }
+        else 
+        {
+          vals.push_back(nullptr);
+        }
+        L++;
+      }
+      StringRef Var;
+      Value* val;
+      llvm::SmallVector<Value *, 8>::const_iterator itVal = vals.begin();
+      for (llvm::SmallVector<llvm::StringRef, 8>::const_iterator S = Node.varBegin(), End = Node.varEnd(); S != End; ++S){
+        
+        Var = *S;
+
+        // Create an alloca instruction to allocate memory for the variable.
+        nameMapBool[Var] = Builder.CreateAlloca(Int1Ty);
+        
+        // Store the initial value (if any) in the variable's memory location.
+        if (*itVal != nullptr)
+        {
+          Builder.CreateStore(*itVal, nameMapBool[Var]);
+        }
+        else
+        {
+          Builder.CreateStore(Int1False, nameMapBool[Var]);
+        }
+        itVal++;
+      }
+    };
+    // TODO
     virtual void visit(Assignment &Node) override
     {
-      // Visit the right-hand side of the assignment and get its value.
-      Node.getRight()->accept(*this);
-      Value *val = V;
-
       // Get the name of the variable being assigned.
       llvm::StringRef varName = Node.getLeft()->getVal();
-      
-      // Get the value of the variable being assigned.
       Node.getLeft()->accept(*this);
       Value *varVal = V;
+
+      bool isBool = Node.getRightExpr() == nullptr;
+      
+      if (isBool)
+        Node.getRightLogic()->accept(*this)
+      else
+        Node.getRightExpr()->accept(*this);
+
+      Value *val = V;
 
       switch (Node.getAssignKind())
       {
@@ -100,18 +190,12 @@ ns{
       case Assignment::Slash_assign:
         val = Builder.CreateSDiv(varVal, val);
         break;
-      case Assignment::Mod_assign:
-        val = Builder.CreateSRem(varVal, val);
-        break;
-      case Assignment::Exp_assign:
-        val = CreateExp(varVal, val);
-        break;
       default:
         break;
       }
 
       // Create a store instruction to assign the value to the variable.
-      Builder.CreateStore(val, nameMap[varName]);
+      Builder.CreateStore(val, nameMapBool[varName]);
 
       // Create a call instruction to invoke the "compiler_write" function with the value.
       CallInst *Call = Builder.CreateCall(CompilerWriteFnTy, CompilerWriteFn, {val});
@@ -122,7 +206,7 @@ ns{
       if (Node.getKind() == Final::Ident)
       {
         // If the Final is an identifier, load its value from memory.
-        V = Builder.CreateLoad(Int32Ty, nameMap[Node.getVal()]);
+        V = Builder.CreateLoad(Int32Ty, nameMapInt[Node.getVal()]);
       }
       else
       {
@@ -169,6 +253,26 @@ ns{
       }
     };
 
+    virtual void visit(UnaryOp &Node) override
+    {
+      // Visit the left-hand side of the binary operation and get its value.
+      Value *Left = Builder.CreateLoad(Int32Ty, nameMapInt[Node.getIdent()]);;
+
+      // Perform the binary operation based on the operator type and create the corresponding instruction.
+      switch (Node.getOperator())
+      {
+      case UnaryOp::Plus_plus:
+        V = Builder.CreateNSWAdd(Left, Int32One);
+        break;
+      case UnaryOp::Minus_minus:
+        V = Builder.CreateNSWSub(Left, Int32One);
+      default:
+        break;
+      }
+      
+      Builder.CreateStore(V, nameMapInt[Node.getIdent()]);
+    };
+
     Value* CreateExp(Value *Left, Value *Right)
     { 
       Value* res = Int32One;
@@ -192,44 +296,10 @@ ns{
       return res;
     }
 
-    virtual void visit(Declaration &Node) override
+    virtual void visit(NegExpr &Node) override
     {
-      llvm::SmallVector<Value *, 8> vals;
-
-      llvm::SmallVector<Expr *, 8>::const_iterator E = Node.valBegin();
-      for (llvm::SmallVector<llvm::StringRef, 8>::const_iterator Var = Node.varBegin(), End = Node.varEnd(); Var != End; ++Var){
-        if (E<Node.valEnd())
-        {
-          (*E)->accept(*this); // If the Declaration node has an expression, recursively visit the expression node
-          vals.push_back(V);
-        }
-        else 
-        {
-          vals.push_back(nullptr);
-        }
-        E++;
-      }
-      StringRef Var;
-      Value* val;
-      llvm::SmallVector<Value *, 8>::const_iterator itVal = vals.begin();
-      for (llvm::SmallVector<llvm::StringRef, 8>::const_iterator S = Node.varBegin(), End = Node.varEnd(); S != End; ++S){
-        
-        Var = *S;
-
-        // Create an alloca instruction to allocate memory for the variable.
-        nameMap[Var] = Builder.CreateAlloca(Int32Ty);
-        
-        // Store the initial value (if any) in the variable's memory location.
-        if (*itVal != nullptr)
-        {
-          Builder.CreateStore(*itVal, nameMap[Var]);
-        }
-        else
-        {
-          Builder.CreateStore(Int32Zero, nameMap[Var]);
-        }
-        itVal++;
-      }
+      Node.getExpr()->accept(*this);
+      V = builder.CreateNeg(V);
     };
 
     virtual void visit(LogicalExpr &Node) override{
@@ -283,9 +353,35 @@ ns{
       case Comparison::Greater_equal:
         V = Builder.CreateICmpSGE(Left, Right);
         break;
+      case Comparison::True:
+        V = Int1True;
+        break;
+      case Comparison::False:
+        V = Int1False;
+        break;
+      case Comparison::Ident:
+        V = Builder.CreateLoad(Int1Ty, nameMapBool[Node.getLeft()]);
+        break;
       default:
         break;
       }
+    };
+
+    bool isBool(llvm::StringRef Var)
+    {
+      return nameMapBool.find(Var) != nameMapBool.end();
+    }
+
+    virtual void visit(PrintStmt &Node) override
+    {
+      // Visit the right-hand side of the assignment and get its value.
+      if (isBool(Node.getVal()))
+        V = Builder.CreateLoad(Int1Ty, nameMapBool[Node.getVal()]);
+      else
+        V = Builder.CreateLoad(Int32Ty, nameMapInt[Node.getVal()]);
+
+      // Create a call instruction to invoke the "print" function with the value.
+      CallInst *Call = Builder.CreateCall(CompilerWriteFnTy, CompilerWriteFn, {V});
     };
 
     virtual void visit(IterStmt &Node) override
