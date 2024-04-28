@@ -169,10 +169,8 @@ ns{
       Node.getLeft()->accept(*this);
       Value *varVal = V;
 
-      bool isBool = Node.getRightExpr() == nullptr;
-      
-      if (isBool)
-        Node.getRightLogic()->accept(*this);
+      if (Node.getRightExpr() == nullptr)
+        Node.getRightLogic()->accept(*this);        
       else
         Node.getRightExpr()->accept(*this);
 
@@ -197,7 +195,11 @@ ns{
       }
 
       // Create a store instruction to assign the value to the variable.
-      Builder.CreateStore(val, nameMapBool[varName]);
+      if (isBool((Final*)Node.getLeft()->getVal()))
+        Builder.CreateStore(val, nameMapBool[varName]);
+      else
+        Builder.CreateStore(val, nameMapInt[varName]);
+        
 
       // Create a call instruction to invoke the "compiler_write" function with the value.
       CallInst *Call = Builder.CreateCall(CompilerWriteFnTy, CompilerWriteFn, {val});
