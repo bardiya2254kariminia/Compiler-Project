@@ -183,6 +183,10 @@ DeclarationInt *Parser::parseIntDec()
             goto _error;
         }
     }
+    else
+    {
+        Values.push_back(nullptr);
+    }
     
     
     while (Tok.is(Token::comma))
@@ -204,6 +208,9 @@ DeclarationInt *Parser::parseIntDec()
             else{
                 goto _error;
             }
+        }
+        else{
+            Values.push_back(nullptr);
         }
     }
 
@@ -249,6 +256,10 @@ DeclarationBool *Parser::parseBoolDec()
             goto _error;
         }
     }
+    else
+    {
+        Values.push_back(nullptr);
+    }
     
     
     while (Tok.is(Token::comma))
@@ -270,6 +281,9 @@ DeclarationBool *Parser::parseBoolDec()
             else{
                 goto _error;
             }
+        }
+        else{
+            Values.push_back(nullptr);
         }
     }
 
