@@ -926,7 +926,7 @@ _error:
 ForStmt *Parser::parseFor()
 {
     Assignment *First = nullptr;
-    Comparison *Second = nullptr;
+    Logic *Second = nullptr;
     Assignment *ThirdAssign = nullptr;
     UnaryOp *ThirdUnary = nullptr;
     llvm::SmallVector<AST *> Body;
@@ -959,7 +959,7 @@ ForStmt *Parser::parseFor()
 
     advance();
 
-    Second = (Comparison*)parseComparison();
+    Second = parseLogic();
 
     if (Second == nullptr)
         goto _error;

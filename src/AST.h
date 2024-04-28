@@ -471,17 +471,17 @@ BodyVector Body;
 
 private:
   Assignment *First;
-  Comparison *Second;
+  Logic *Second;
   Assignment *ThirdAssign;
   UnaryOp *ThirdUnary;
 
 
 public:
-  ForStmt(Assignment *First, Comparison *Second, Assignment *ThirdAssign, UnaryOp* ThirdUnary, llvm::SmallVector<AST *> Body) : First(First), Second(Second), ThirdAssign(ThirdAssign), ThirdUnary(ThirdUnary), Body(Body) {}
+  ForStmt(Assignment *First, Logic *Second, Assignment *ThirdAssign, UnaryOp* ThirdUnary, llvm::SmallVector<AST *> Body) : First(First), Second(Second), ThirdAssign(ThirdAssign), ThirdUnary(ThirdUnary), Body(Body) {}
 
   Assignment *getFirst() { return First; }
 
-  Comparison *getSecond() { return Second; }
+  Logic *getSecond() { return Second; }
 
   Assignment *getThirdAssign() { return ThirdAssign; }
 
