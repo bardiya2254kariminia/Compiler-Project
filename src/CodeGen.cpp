@@ -257,30 +257,67 @@ ns{
       }
     };
 
-    Value* CreateExp(Value *Left, Value *Right)
-    { 
-      llvm::BasicBlock* ForCondBB = llvm::BasicBlock::Create(M->getContext(), "for.cond", Builder.GetInsertBlock()->getParent());
-      llvm::BasicBlock* ForBodyBB = llvm::BasicBlock::Create(M->getContext(), "for.body", Builder.GetInsertBlock()->getParent());
-      llvm::BasicBlock* AfterForBB = llvm::BasicBlock::Create(M->getContext(), "after.for", Builder.GetInsertBlock()->getParent());
+    // Value* CreateExp(Value *Left, Value *Right)
+    // { 
+    //   if (Right == Int32Zero)
+    //     return Int32One;
 
-      Value* loopVar = Builder.getInt32(0);
-      Value* result = Builder.getInt32(1);
+    //   Value* result = Left;
+    //   int expo;
+
+    //   if (ConstantInt* intConstant = dyn_cast<ConstantInt>(Right)) {
+    //     // Get the integer value
+    //     expo = intConstant->getSExtValue(); // or getZExtValue() for unsigned values
+    //     // Now, 'intValue' contains the actual integer value.
+    //   } else {
+    //     // Handle the case where the Value is not an integer constant
+    //     llvm::errs() << "Error: The exponent only allowed to be a constant.\n";
+    //     exit(3);
+    //   }
+
+    //   for (int i = 1; i < expo; ++i)
+    //     result = Builder.CreateMul(result, Left);
+
+    //   return result;
+    // }
+
+    Value* CreateExp(Value *Left, Value *Right)
+    {
+      CallInst *Call1 = Builder.CreateCall(CompilerWriteFnTy, CompilerWriteFn, {Left});
+      CallInst *Call2 = Builder.CreateCall(CompilerWriteFnTy, CompilerWriteFn, {Right});
+
+      AllocaInst* counterAlloca = Builder.CreateAlloca(Int32Ty);
+      AllocaInst* resultAlloca = Builder.CreateAlloca(Int32Ty);
+      Builder.CreateStore(Int32Zero, counterAlloca);
+      Builder.CreateStore(Int32One, resultAlloca);
+
+      llvm::BasicBlock* ForCondBB = llvm::BasicBlock::Create(M->getContext(), "exp.cond", Builder.GetInsertBlock()->getParent());
+      llvm::BasicBlock* ForBodyBB = llvm::BasicBlock::Create(M->getContext(), "exp.body", Builder.GetInsertBlock()->getParent());
+      llvm::BasicBlock* AfterForBB = llvm::BasicBlock::Create(M->getContext(), "after.exp", Builder.GetInsertBlock()->getParent());
 
       Builder.CreateBr(ForCondBB); //?
 
       Builder.SetInsertPoint(ForCondBB);
-      Value *cond = Builder.CreateICmpSLT(loopVar, Right);
+      Value* counterLoad = Builder.CreateLoad(counterAlloca);
+
+      Value *cond = Builder.CreateICmpSLT(counterLoad, Right);
       Builder.CreateCondBr(cond, ForBodyBB, AfterForBB);
 
       Builder.SetInsertPoint(ForBodyBB);
-      Value* temp = Builder.CreateNSWMul(result, Left);
+      Value* resultLoad = Builder.CreateLoad(resultAlloca);
 
-      Value* nextLoopVar = Builder.CreateAdd(loopVar, Int32One);
-      loopVar = nextLoopVar;
+      Value* resultMul = Builder.CreateMul(resultLoad, Left);
+      Value* counterInc = Builder.CreateAdd(counterLoad, Int32One);
+      Builder.CreateStore(resultMul, resultAlloca);
+      Builder.CreateStore(counterInc, counterAlloca);
+
+      CallInst *Call3 = Builder.CreateCall(CompilerWriteFnTy, CompilerWriteFn, {resultMul});
+      CallInst *Call4 = Builder.CreateCall(CompilerWriteFnTy, CompilerWriteFn, {counterInc});
 
       Builder.CreateBr(ForCondBB);
       Builder.SetInsertPoint(AfterForBB);
 
+      Value* result = Builder.CreateLoad(resultAlloca);
       return result;
     }
 
