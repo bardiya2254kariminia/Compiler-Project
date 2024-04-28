@@ -88,7 +88,7 @@ ns{
 
       llvm::SmallVector<Expr *, 8>::const_iterator E = Node.valBegin();
       for (llvm::SmallVector<llvm::StringRef, 8>::const_iterator Var = Node.varBegin(), End = Node.varEnd(); Var != End; ++Var){
-        if (E<Node.valEnd() || *E == nullptr)
+        if (E<Node.valEnd() && *E != nullptr)
         {
           (*E)->accept(*this); // If the Declaration node has an expression, recursively visit the expression node
           vals.push_back(V);
@@ -128,7 +128,7 @@ ns{
 
       llvm::SmallVector<Logic *, 8>::const_iterator L = Node.valBegin();
       for (llvm::SmallVector<llvm::StringRef, 8>::const_iterator Var = Node.varBegin(), End = Node.varEnd(); Var != End; ++Var){
-        if (L<Node.valEnd() || *L == nullptr)
+        if (L<Node.valEnd() && *L != nullptr)
         {
           (*L)->accept(*this); // If the Declaration node has an expression, recursively visit the expression node
           vals.push_back(V);
@@ -169,10 +169,8 @@ ns{
       Node.getLeft()->accept(*this);
       Value *varVal = V;
 
-      bool isBool = Node.getRightExpr() == nullptr;
-      
-      if (isBool)
-        Node.getRightLogic()->accept(*this);
+      if (Node.getRightExpr() == nullptr)
+        Node.getRightLogic()->accept(*this);        
       else
         Node.getRightExpr()->accept(*this);
 
@@ -197,7 +195,11 @@ ns{
       }
 
       // Create a store instruction to assign the value to the variable.
-      Builder.CreateStore(val, nameMapBool[varName]);
+      if (isBool(((Final*)Node.getLeft())->getVal()))
+        Builder.CreateStore(val, nameMapBool[varName]);
+      else
+        Builder.CreateStore(val, nameMapInt[varName]);
+        
 
       // Create a call instruction to invoke the "compiler_write" function with the value.
       CallInst *Call = Builder.CreateCall(CompilerWriteFnTy, CompilerWriteFn, {val});
@@ -344,6 +346,24 @@ ns{
 
     virtual void visit(Comparison &Node) override{
       // Visit the left-hand side of the Comparison operation and get its value.
+      if (Node.getRight() == nullptr)
+      {
+        switch (Node.getOperator())
+        {
+        case Comparison::True:
+          V = Int1True;
+          break;
+        case Comparison::False:
+          V = Int1False;
+          break;
+        case Comparison::Ident:
+          V = Builder.CreateLoad(Int1Ty, nameMapBool[((Final*)Node.getLeft())->getVal()]);
+          break;
+        default:
+          break;
+        }
+        return;
+      }
       Node.getLeft()->accept(*this);
       Value *Left = V;
 
@@ -370,15 +390,6 @@ ns{
         break;
       case Comparison::Greater_equal:
         V = Builder.CreateICmpSGE(Left, Right);
-        break;
-      case Comparison::True:
-        V = Int1True;
-        break;
-      case Comparison::False:
-        V = Int1False;
-        break;
-      case Comparison::Ident:
-        V = Builder.CreateLoad(Int1Ty, nameMapBool[((Final*) Node.getLeft())->getVal()]);
         break;
       default:
         break;
