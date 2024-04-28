@@ -283,9 +283,6 @@ ns{
 
     Value* CreateExp(Value *Left, Value *Right)
     {
-      CallInst *Call1 = Builder.CreateCall(CompilerWriteFnTy, CompilerWriteFn, {Left});
-      CallInst *Call2 = Builder.CreateCall(CompilerWriteFnTy, CompilerWriteFn, {Right});
-
       AllocaInst* counterAlloca = Builder.CreateAlloca(Int32Ty);
       AllocaInst* resultAlloca = Builder.CreateAlloca(Int32Ty);
       Builder.CreateStore(Int32Zero, counterAlloca);
@@ -310,9 +307,6 @@ ns{
       Value* counterInc = Builder.CreateAdd(counterLoad, Int32One);
       Builder.CreateStore(resultMul, resultAlloca);
       Builder.CreateStore(counterInc, counterAlloca);
-
-      CallInst *Call3 = Builder.CreateCall(CompilerWriteFnTy, CompilerWriteFn, {resultMul});
-      CallInst *Call4 = Builder.CreateCall(CompilerWriteFnTy, CompilerWriteFn, {counterInc});
 
       Builder.CreateBr(ForCondBB);
       Builder.SetInsertPoint(AfterForBB);
