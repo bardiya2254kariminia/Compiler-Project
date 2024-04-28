@@ -89,6 +89,15 @@ public:
         }
       }
     }
+
+    if (Node.getOperator() == BinaryOp::Operator::Exp ) {
+        Final* f = (Final*)right;
+
+        if (f->getKind() == Final::ValueKind::Ident) {
+          llvm::errs() << "The exponent only allowed to be a constant.\n";
+          HasError = true;
+        }
+    }
     
   };
 
