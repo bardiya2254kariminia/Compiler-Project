@@ -15,6 +15,7 @@ ns{
   {
     Module *M;
     IRBuilder<> Builder;
+    Type *VoidTy;
     Type *Int1Ty;
     Type *Int32Ty;
     Type *Int8PtrTy;
@@ -36,6 +37,7 @@ ns{
     ToIRVisitor(Module *M) : M(M), Builder(M->getContext())
     {
       // Initialize LLVM types and constants.
+      VoidTy = Type::getVoidTy(M->getContext());
       Int1Ty = Type::getInt1Ty(M->getContext());
       Int32Ty = Type::getInt32Ty(M->getContext());
       Int8PtrTy = Type::getInt8PtrTy(M->getContext());
@@ -86,7 +88,7 @@ ns{
 
       llvm::SmallVector<Expr *, 8>::const_iterator E = Node.valBegin();
       for (llvm::SmallVector<llvm::StringRef, 8>::const_iterator Var = Node.varBegin(), End = Node.varEnd(); Var != End; ++Var){
-        if (E<Node.valEnd())
+        if (E<Node.valEnd() || *E == nullptr)
         {
           (*E)->accept(*this); // If the Declaration node has an expression, recursively visit the expression node
           vals.push_back(V);
@@ -126,7 +128,7 @@ ns{
 
       llvm::SmallVector<Logic *, 8>::const_iterator L = Node.valBegin();
       for (llvm::SmallVector<llvm::StringRef, 8>::const_iterator Var = Node.varBegin(), End = Node.varEnd(); Var != End; ++Var){
-        if (L<Node.valEnd())
+        if (L<Node.valEnd() || *L == nullptr)
         {
           (*L)->accept(*this); // If the Declaration node has an expression, recursively visit the expression node
           vals.push_back(V);
@@ -170,7 +172,7 @@ ns{
       bool isBool = Node.getRightExpr() == nullptr;
       
       if (isBool)
-        Node.getRightLogic()->accept(*this)
+        Node.getRightLogic()->accept(*this);
       else
         Node.getRightExpr()->accept(*this);
 
@@ -259,19 +261,19 @@ ns{
       llvm::BasicBlock* ForBodyBB = llvm::BasicBlock::Create(M->getContext(), "for.body", Builder.GetInsertBlock()->getParent());
       llvm::BasicBlock* AfterForBB = llvm::BasicBlock::Create(M->getContext(), "after.for", Builder.GetInsertBlock()->getParent());
 
-      Value* loopVar = Builder..getInt32(0);
+      Value* loopVar = Builder.getInt32(0);
       Value* result = Builder.getInt32(1);
 
       Builder.CreateBr(ForCondBB); //?
 
       Builder.SetInsertPoint(ForCondBB);
-      Value *cond = builder.CreateICmpSLT(loopVar, Right);
+      Value *cond = Builder.CreateICmpSLT(loopVar, Right);
       Builder.CreateCondBr(cond, ForBodyBB, AfterForBB);
 
       Builder.SetInsertPoint(ForBodyBB);
       Value* temp = Builder.CreateNSWMul(result, Left);
 
-      Value* nextLoopVar = builder.CreateAdd(loopVar, Int32One);
+      Value* nextLoopVar = Builder.CreateAdd(loopVar, Int32One);
       loopVar = nextLoopVar;
 
       Builder.CreateBr(ForCondBB);
@@ -300,10 +302,17 @@ ns{
       Builder.CreateStore(V, nameMapInt[Node.getIdent()]);
     };
 
+    virtual void visit(SignedNumber &Node) override
+    {
+      int intval;
+      Node.getValue().getAsInteger(10, intval);
+      V = ConstantInt::get(Int32Ty, (Node.getSign() == SignedNumber::Minus) ? -intval : intval, true);
+    };
+
     virtual void visit(NegExpr &Node) override
     {
       Node.getExpr()->accept(*this);
-      V = builder.CreateNeg(V);
+      V = Builder.CreateNeg(V);
     };
 
     virtual void visit(LogicalExpr &Node) override{
@@ -369,7 +378,7 @@ ns{
         V = Int1False;
         break;
       case Comparison::Ident:
-        V = Builder.CreateLoad(Int1Ty, nameMapBool[Node.getLeft()]);
+        V = Builder.CreateLoad(Int1Ty, nameMapBool[((Final*) Node.getLeft())->getVal()]);
         break;
       default:
         break;
@@ -384,10 +393,10 @@ ns{
     virtual void visit(PrintStmt &Node) override
     {
       // Visit the right-hand side of the assignment and get its value.
-      if (isBool(Node.getVal()))
-        V = Builder.CreateLoad(Int1Ty, nameMapBool[Node.getVal()]);
+      if (isBool(Node.getVar()))
+        V = Builder.CreateLoad(Int1Ty, nameMapBool[Node.getVar()]);
       else
-        V = Builder.CreateLoad(Int32Ty, nameMapInt[Node.getVal()]);
+        V = Builder.CreateLoad(Int32Ty, nameMapInt[Node.getVar()]);
 
       // Create a call instruction to invoke the "print" function with the value.
       CallInst *Call = Builder.CreateCall(CompilerWriteFnTy, CompilerWriteFn, {V});
@@ -438,7 +447,11 @@ ns{
             (*I)->accept(*this);
         }
 
-      Node.getThird()->accept(*this);
+      if (Node.getThirdAssign() == nullptr)
+        Node.getThirdUnary()->accept(*this);
+      else
+        Node.getThirdAssign()->accept(*this);
+
       Builder.CreateBr(ForCondBB);
 
       Builder.SetInsertPoint(AfterForBB);
