@@ -185,7 +185,7 @@ DeclarationInt *Parser::parseIntDec()
     }
     else
     {
-        Values.push_back(nullptr);
+        Values.push_back(new Final(Final::Number, llvm::StringRef("0")));
     }
     
     
@@ -210,7 +210,7 @@ DeclarationInt *Parser::parseIntDec()
             }
         }
         else{
-            Values.push_back(nullptr);
+            Values.push_back(new Final(Final::Number, llvm::StringRef("0")));
         }
     }
 
@@ -258,7 +258,7 @@ DeclarationBool *Parser::parseBoolDec()
     }
     else
     {
-        Values.push_back(nullptr);
+        Values.push_back(new Comparison(nullptr, nullptr, Comparison::False));
     }
     
     
@@ -283,14 +283,13 @@ DeclarationBool *Parser::parseBoolDec()
             }
         }
         else{
-            Values.push_back(nullptr);
+            Values.push_back(new Comparison(nullptr, nullptr, Comparison::False));
         }
     }
 
     if (expect(Token::semicolon)){
         goto _error;
     }
-
     return new DeclarationBool(Vars, Values);
 _error: 
     while (Tok.getKind() != Token::eoi)
