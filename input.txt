@@ -1,8 +1,11 @@
-int a;
-a = 2^4+3*3+1;
-int i = 0;
-loopc i < 5: begin
-i += 1;
-end
-i += 0;
-
+int x = 1;
+int a = 0;
+bool z=x>a;
+bool i = false or(x>2);
+int y=3;
+for(x=0; x<y; x++){
+    if(x>x+1){
+        x = (x+2)^(3+x);
+    }
+    
+}
