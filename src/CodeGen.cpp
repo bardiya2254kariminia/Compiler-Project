@@ -257,30 +257,6 @@ ns{
       }
     };
 
-    // Value* CreateExp(Value *Left, Value *Right)
-    // { 
-    //   if (Right == Int32Zero)
-    //     return Int32One;
-
-    //   Value* result = Left;
-    //   int expo;
-
-    //   if (ConstantInt* intConstant = dyn_cast<ConstantInt>(Right)) {
-    //     // Get the integer value
-    //     expo = intConstant->getSExtValue(); // or getZExtValue() for unsigned values
-    //     // Now, 'intValue' contains the actual integer value.
-    //   } else {
-    //     // Handle the case where the Value is not an integer constant
-    //     llvm::errs() << "Error: The exponent only allowed to be a constant.\n";
-    //     exit(3);
-    //   }
-
-    //   for (int i = 1; i < expo; ++i)
-    //     result = Builder.CreateMul(result, Left);
-
-    //   return result;
-    // }
-
     Value* CreateExp(Value *Left, Value *Right)
     {
       AllocaInst* counterAlloca = Builder.CreateAlloca(Int32Ty);
