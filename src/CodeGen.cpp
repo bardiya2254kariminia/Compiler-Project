@@ -88,7 +88,7 @@ ns{
 
       llvm::SmallVector<Expr *, 8>::const_iterator E = Node.valBegin();
       for (llvm::SmallVector<llvm::StringRef, 8>::const_iterator Var = Node.varBegin(), End = Node.varEnd(); Var != End; ++Var){
-        if (E<Node.valEnd() || *E == nullptr)
+        if (E<Node.valEnd() && *E != nullptr)
         {
           (*E)->accept(*this); // If the Declaration node has an expression, recursively visit the expression node
           vals.push_back(V);
@@ -128,7 +128,7 @@ ns{
 
       llvm::SmallVector<Logic *, 8>::const_iterator L = Node.valBegin();
       for (llvm::SmallVector<llvm::StringRef, 8>::const_iterator Var = Node.varBegin(), End = Node.varEnd(); Var != End; ++Var){
-        if (L<Node.valEnd() || *L == nullptr)
+        if (L<Node.valEnd() && *L != nullptr)
         {
           (*L)->accept(*this); // If the Declaration node has an expression, recursively visit the expression node
           vals.push_back(V);
