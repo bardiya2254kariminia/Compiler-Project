@@ -311,6 +311,11 @@ ns{
       Node.getLeft()->accept(*this);
       Value *Left = V;
 
+      if (Node.getRight() == nullptr)
+      {
+        V = Left;
+        return; 
+      }
       // Visit the right-hand side of the Logical operation and get its value.
       Node.getRight()->accept(*this);
       Value *Right = V;
