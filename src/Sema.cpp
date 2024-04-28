@@ -305,13 +305,8 @@ public:
     Assignment *first = Node.getFirst();
     (*first).accept(*this);
 
-    Comparison *second = Node.getSecond();
+    Logic *second = Node.getSecond();
     (*second).accept(*this);
-    if (second->getOperator() == Comparison::False || second->getOperator() == Comparison::True || second->getOperator() == Comparison::Ident){
-      llvm::errs() << "The second part of for shall be a comparsion. " << "\n";
-      HasError = true;
-    }
-      
 
     Assignment *assign = Node.getThirdAssign();
     if(assign)
