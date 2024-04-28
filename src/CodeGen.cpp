@@ -195,7 +195,7 @@ ns{
       }
 
       // Create a store instruction to assign the value to the variable.
-      if (isBool((Final*)Node.getLeft()->getVal()))
+      if (isBool(((Final*)Node.getLeft())->getVal()))
         Builder.CreateStore(val, nameMapBool[varName]);
       else
         Builder.CreateStore(val, nameMapInt[varName]);
@@ -346,6 +346,24 @@ ns{
 
     virtual void visit(Comparison &Node) override{
       // Visit the left-hand side of the Comparison operation and get its value.
+      if (Node.getRight() == nullptr)
+      {
+        switch (Node.getOperator())
+        {
+        case Comparison::True:
+          V = Int1True;
+          break;
+        case Comparison::False:
+          V = Int1False;
+          break;
+        case Comparison::Ident:
+          V = Builder.CreateLoad(Int1Ty, nameMapBool[((Final*)Node.getLeft())->getVal()]);
+          break;
+        default:
+          break;
+        }
+        return;
+      }
       Node.getLeft()->accept(*this);
       Value *Left = V;
 
@@ -372,15 +390,6 @@ ns{
         break;
       case Comparison::Greater_equal:
         V = Builder.CreateICmpSGE(Left, Right);
-        break;
-      case Comparison::True:
-        V = Int1True;
-        break;
-      case Comparison::False:
-        V = Int1False;
-        break;
-      case Comparison::Ident:
-        V = Builder.CreateLoad(Int1Ty, nameMapBool[((Final*) Node.getLeft())->getVal()]);
         break;
       default:
         break;
