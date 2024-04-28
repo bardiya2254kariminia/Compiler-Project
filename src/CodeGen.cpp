@@ -253,6 +253,33 @@ ns{
       }
     };
 
+    Value* CreateExp(Value *Left, Value *Right)
+    { 
+      llvm::BasicBlock* ForCondBB = llvm::BasicBlock::Create(M->getContext(), "for.cond", Builder.GetInsertBlock()->getParent());
+      llvm::BasicBlock* ForBodyBB = llvm::BasicBlock::Create(M->getContext(), "for.body", Builder.GetInsertBlock()->getParent());
+      llvm::BasicBlock* AfterForBB = llvm::BasicBlock::Create(M->getContext(), "after.for", Builder.GetInsertBlock()->getParent());
+
+      Value* loopVar = Builder..getInt32(0);
+      Value* result = Builder.getInt32(1);
+
+      Builder.CreateBr(ForCondBB); //?
+
+      Builder.SetInsertPoint(ForCondBB);
+      Value *cond = builder.CreateICmpSLT(loopVar, Right);
+      Builder.CreateCondBr(cond, ForBodyBB, AfterForBB);
+
+      Builder.SetInsertPoint(ForBodyBB);
+      Value* temp = Builder.CreateNSWMul(result, Left);
+
+      Value* nextLoopVar = builder.CreateAdd(loopVar, Int32One);
+      loopVar = nextLoopVar;
+
+      Builder.CreateBr(ForCondBB);
+      Builder.SetInsertPoint(AfterForBB);
+
+      return result;
+    }
+
     virtual void visit(UnaryOp &Node) override
     {
       // Visit the left-hand side of the binary operation and get its value.
@@ -272,29 +299,6 @@ ns{
       
       Builder.CreateStore(V, nameMapInt[Node.getIdent()]);
     };
-
-    Value* CreateExp(Value *Left, Value *Right)
-    { 
-      Value* res = Int32One;
-
-      int intValue;
-      
-      if (ConstantInt* intConstant = dyn_cast<ConstantInt>(Right)) {
-        // Get the integer value
-        intValue = intConstant->getSExtValue(); // or getZExtValue() for unsigned values
-        // Now, 'intValue' contains the actual integer value.
-      } else {
-        // Handle the case where the Value is not an integer constant
-        llvm::errs() << "Error: The exponent only allowed to be a constant.\n";
-        exit(3);
-      }
-
-      for (int i = 0; i < intValue; ++i)
-      {
-        res = Builder.CreateNSWMul(res, Left);
-      }
-      return res;
-    }
 
     virtual void visit(NegExpr &Node) override
     {
@@ -384,20 +388,20 @@ ns{
       CallInst *Call = Builder.CreateCall(CompilerWriteFnTy, CompilerWriteFn, {V});
     };
 
-    virtual void visit(IterStmt &Node) override
+    virtual void visit(WhileStmt &Node) override
     {
-      llvm::BasicBlock* WhileCondBB = llvm::BasicBlock::Create(M->getContext(), "loopc.cond", Builder.GetInsertBlock()->getParent());
-      llvm::BasicBlock* WhileBodyBB = llvm::BasicBlock::Create(M->getContext(), "loopc.body", Builder.GetInsertBlock()->getParent());
-      llvm::BasicBlock* AfterWhileBB = llvm::BasicBlock::Create(M->getContext(), "after.loopc", Builder.GetInsertBlock()->getParent());
+      llvm::BasicBlock* WhileCondBB = llvm::BasicBlock::Create(M->getContext(), "while.cond", Builder.GetInsertBlock()->getParent());
+      llvm::BasicBlock* WhileBodyBB = llvm::BasicBlock::Create(M->getContext(), "while.body", Builder.GetInsertBlock()->getParent());
+      llvm::BasicBlock* AfterWhileBB = llvm::BasicBlock::Create(M->getContext(), "after.while", Builder.GetInsertBlock()->getParent());
 
-      Builder.CreateBr(WhileCondBB);
+      Builder.CreateBr(WhileCondBB); //?
       Builder.SetInsertPoint(WhileCondBB);
       Node.getCond()->accept(*this);
       Value* val=V;
       Builder.CreateCondBr(val, WhileBodyBB, AfterWhileBB);
       Builder.SetInsertPoint(WhileBodyBB);
 
-      for (llvm::SmallVector<Assignment* >::const_iterator I = Node.begin(), E = Node.end(); I != E; ++I)
+      for (llvm::SmallVector<AST* >::const_iterator I = Node.begin(), E = Node.end(); I != E; ++I)
         {
             (*I)->accept(*this);
         }
@@ -408,19 +412,46 @@ ns{
         
     };
 
+    virtual void visit(ForStmt &Node) override
+    {
+      llvm::BasicBlock* ForCondBB = llvm::BasicBlock::Create(M->getContext(), "for.cond", Builder.GetInsertBlock()->getParent());
+      llvm::BasicBlock* ForBodyBB = llvm::BasicBlock::Create(M->getContext(), "for.body", Builder.GetInsertBlock()->getParent());
+      llvm::BasicBlock* AfterForBB = llvm::BasicBlock::Create(M->getContext(), "after.for", Builder.GetInsertBlock()->getParent());
+
+      Node.getFirst()->accept(*this);
+
+      Builder.CreateBr(ForCondBB); //?
+
+      Builder.SetInsertPoint(ForCondBB);
+      Node.getSecond()->accept(*this);
+      Value* val=V;
+      Builder.CreateCondBr(val, ForBodyBB, AfterForBB);
+
+      Builder.SetInsertPoint(ForBodyBB);
+      for (llvm::SmallVector<AST* >::const_iterator I = Node.begin(), E = Node.end(); I != E; ++I)
+        {
+            (*I)->accept(*this);
+        }
+
+      Node.getThird()->accept(*this);
+      Builder.CreateBr(ForCondBB);
+
+      Builder.SetInsertPoint(AfterForBB);
+    };
+
     virtual void visit(IfStmt &Node) override{
       llvm::BasicBlock* IfCondBB = llvm::BasicBlock::Create(M->getContext(), "if.cond", Builder.GetInsertBlock()->getParent());
       llvm::BasicBlock* IfBodyBB = llvm::BasicBlock::Create(M->getContext(), "if.body", Builder.GetInsertBlock()->getParent());
       llvm::BasicBlock* AfterIfBB = llvm::BasicBlock::Create(M->getContext(), "after.if", Builder.GetInsertBlock()->getParent());
 
-      Builder.CreateBr(IfCondBB);
+      Builder.CreateBr(IfCondBB); //?
       Builder.SetInsertPoint(IfCondBB);
       Node.getCond()->accept(*this);
       Value* IfCondVal=V;
 
       Builder.SetInsertPoint(IfBodyBB);
 
-      for (llvm::SmallVector<Assignment* >::const_iterator I = Node.begin(), E = Node.end(); I != E; ++I)
+      for (llvm::SmallVector<AST* >::const_iterator I = Node.begin(), E = Node.end(); I != E; ++I)
         {
             (*I)->accept(*this);
         }
@@ -454,7 +485,7 @@ ns{
       if (Node.beginElse() != Node.endElse()) {
         llvm::BasicBlock* ElseBB = llvm::BasicBlock::Create(M->getContext(), "else.body", Builder.GetInsertBlock()->getParent());
         Builder.SetInsertPoint(ElseBB);
-        for (llvm::SmallVector<Assignment* >::const_iterator I = Node.beginElse(), E = Node.endElse(); I != E; ++I)
+        for (llvm::SmallVector<AST* >::const_iterator I = Node.beginElse(), E = Node.endElse(); I != E; ++I)
         {
             (*I)->accept(*this);
         }
@@ -472,7 +503,7 @@ ns{
     };
 
     virtual void visit(elifStmt &Node) override{
-      for (llvm::SmallVector<Assignment* >::const_iterator I = Node.begin(), E = Node.end(); I != E; ++I)
+      for (llvm::SmallVector<AST* >::const_iterator I = Node.begin(), E = Node.end(); I != E; ++I)
         {
             (*I)->accept(*this);
         }
