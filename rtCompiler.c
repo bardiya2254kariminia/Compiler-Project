@@ -1,9 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void compiler_write(int v)
+void print_int(int v)
 {
-    printf("The result is: %d\n", v);
+    printf("%d\n", v);
+}
+
+void print_bool(int v)
+{
+    printf("%s\n", v ? "true" : "false");
 }
 
 int compiler_read(char *s)

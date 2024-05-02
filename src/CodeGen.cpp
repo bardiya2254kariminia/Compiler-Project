@@ -29,8 +29,11 @@ ns{
     StringMap<AllocaInst *> nameMapInt;
     StringMap<AllocaInst *> nameMapBool;
 
-    FunctionType *CompilerWriteFnTy;
-    Function *CompilerWriteFn;
+    FunctionType *PrintIntFnTy;
+    Function *PrintIntFn;
+
+    FunctionType *PrintBoolFnTy;
+    Function *PrintBoolFn;
 
   public:
     // Constructor for the visitor class.
@@ -48,10 +51,14 @@ ns{
       Int32Zero = ConstantInt::get(Int32Ty, 0, true);
       Int32One = ConstantInt::get(Int32Ty, 1, true);
 
-      // Create a function type for the "compiler_write" function.
-      CompilerWriteFnTy = FunctionType::get(VoidTy, {Int32Ty}, false);
+      
+      PrintIntFnTy = FunctionType::get(VoidTy, {Int32Ty}, false);
       // Create a function declaration for the "compiler_write" function.
-      CompilerWriteFn = Function::Create(CompilerWriteFnTy, GlobalValue::ExternalLinkage, "compiler_write", M);
+      PrintIntFn = Function::Create(PrintIntFnTy, GlobalValue::ExternalLinkage, "print_int", M);
+
+      PrintBoolFnTy = FunctionType::get(VoidTy, {Int1Ty}, false);
+      // Create a function declaration for the "compiler_write" function.
+      PrintBoolFn = Function::Create(PrintBoolFnTy, GlobalValue::ExternalLinkage, "print_bool", M);
     }
 
     // Entry point for generating LLVM IR from the AST.
@@ -199,10 +206,7 @@ ns{
         Builder.CreateStore(val, nameMapBool[varName]);
       else
         Builder.CreateStore(val, nameMapInt[varName]);
-        
 
-      // Create a call instruction to invoke the "compiler_write" function with the value.
-      CallInst *Call = Builder.CreateCall(CompilerWriteFnTy, CompilerWriteFn, {val});
     };
 
     virtual void visit(Final &Node) override
@@ -411,13 +415,14 @@ ns{
     virtual void visit(PrintStmt &Node) override
     {
       // Visit the right-hand side of the assignment and get its value.
-      if (isBool(Node.getVar()))
+      if (isBool(Node.getVar())){
         V = Builder.CreateLoad(Int1Ty, nameMapBool[Node.getVar()]);
-      else
+        CallInst *Call = Builder.CreateCall(PrintBoolFnTy, PrintBoolFn, {V});
+      }
+      else{
         V = Builder.CreateLoad(Int32Ty, nameMapInt[Node.getVar()]);
-
-      // Create a call instruction to invoke the "print" function with the value.
-      CallInst *Call = Builder.CreateCall(CompilerWriteFnTy, CompilerWriteFn, {V});
+        CallInst *Call = Builder.CreateCall(PrintIntFnTy, PrintIntFn, {V});
+      }      
     };
 
     virtual void visit(WhileStmt &Node) override

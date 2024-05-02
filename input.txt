@@ -1,11 +1,13 @@
 int x = 1;
-int a = 0;
-bool z=x>a;
-bool i = false or(x>2);
+int a = 2;
 int y=3;
+int s = x+y*a;
+bool t = true;
+print(t);
+print(s);
 for(x=0; x<y; x++){
-    if(x>x+1){
-        x = (x+2)^(3+x);
-    }
-    
+    if(x<y){
+        x = (x+2)^x;
+    }   
+    print(x);
 }
