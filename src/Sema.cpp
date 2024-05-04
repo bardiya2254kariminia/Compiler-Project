@@ -323,7 +323,6 @@ public:
   };
 
   virtual void visit(SignedNumber &Node) override {
-    Node.accept(*this);
   };
 
 };
