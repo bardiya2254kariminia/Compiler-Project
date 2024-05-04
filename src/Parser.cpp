@@ -775,69 +775,74 @@ IfStmt *Parser::parseIf()
     prev_buffer_if = Lex.getBuffer();
     
     advance();
-    
 
-    while (Tok.is(Token::KW_elseif)) {
-        hasElif = true;
-        advance();
-        
-        if (expect(Token::l_paren)){
-            goto _error;
-        }
-
-        advance();
-
-        Logic *Cond = parseLogic();
-
-        if (Cond == nullptr)
-        {
-            goto _error;
-        }
-
-        if (expect(Token::r_paren)){
-            goto _error;
-        }
-
-        advance();
-
-        if (expect(Token::l_brace)){
-            goto _error;
-        }
-
-        advance();
-
-        Stmts = getBody();
-        prev_token_elif = Tok;
-        prev_buffer_elif = Lex.getBuffer();
-        
-        if(!Stmts.empty())
-            advance();
-        else
-            goto _error;
-        
-        elifStmt *elif = new elifStmt(Cond, Stmts);
-        elifStmts.push_back(elif);
-
-    }
-
-
-    if (Tok.is(Token::KW_else))
+    while true
     {
-        hasElse = true;
-        advance();
+        if (Tok.is(Token::KW_else))
+        {
+            advance();
+            if (Tok.is(Token::KW_if))
+            {
+                hasElif = true;
+                advance();
+                
+                if (expect(Token::l_paren)){
+                    goto _error;
+                }
 
-        if (expect(Token::l_brace)){
-            goto _error;
+                advance();
+
+                Logic *Cond = parseLogic();
+
+                if (Cond == nullptr)
+                {
+                    goto _error;
+                }
+
+                if (expect(Token::r_paren)){
+                    goto _error;
+                }
+
+                advance();
+
+                if (expect(Token::l_brace)){
+                    goto _error;
+                }
+
+                advance();
+
+                Stmts = getBody();
+                prev_token_elif = Tok;
+                prev_buffer_elif = Lex.getBuffer();
+                
+                if(!Stmts.empty())
+                    advance();
+                else
+                    goto _error;
+                
+                elifStmt *elif = new elifStmt(Cond, Stmts);
+                elifStmts.push_back(elif);
+            }
+            else
+            {
+                hasElse = true;
+
+                if (expect(Token::l_brace)){
+                    goto _error;
+                }
+
+                advance();
+
+                elseStmts = getBody();
+                
+                if(elseStmts.empty())
+                    goto _error;
+            }
         }
-
-        advance();
-
-        elseStmts = getBody();
-        
-        if(elseStmts.empty())
-            goto _error;
-
+        else
+            break;
     }
+
     if(hasElif && !hasElse){
         Tok = prev_token_elif;
         Lex.setBufferPtr(prev_buffer_elif);
