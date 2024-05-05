@@ -837,6 +837,8 @@ IfStmt *Parser::parseIf()
                 
                 if(elseStmts.empty())
                     goto _error;
+
+                break;
             }
         }
         else
