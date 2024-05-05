@@ -776,7 +776,7 @@ IfStmt *Parser::parseIf()
     
     advance();
 
-    while true
+    while (true)
     {
         if (Tok.is(Token::KW_else))
         {
