@@ -367,9 +367,15 @@ ns{
         case Comparison::False:
           V = Int1False;
           break;
-        case Comparison::Ident:
-          V = Builder.CreateLoad(Int1Ty, nameMapBool[((Final*)Node.getLeft())->getVal()]);
+        case Comparison::Ident: 
+          if(isBool(((Final*)Node.getLeft())->getVal())){
+            V = Builder.CreateLoad(Int1Ty, nameMapBool[((Final*)Node.getLeft())->getVal()]);
+            break;
+          }
+          
+          V = Builder.CreateLoad(Int32Ty, nameMapInt[((Final*)Node.getLeft())->getVal()]);
           break;
+        
         default:
           break;
         }

@@ -211,15 +211,15 @@ public:
     if(Node.getRight()){
       Node.getRight()->accept(*this);
     }
-    else{
-      if (Node.getOperator() == Comparison::Ident){
-        Final* F = (Final*)(Node.getLeft());
-        if (BoolScope.find(F->getVal()) == BoolScope.end()) {
-          llvm::errs() << "you need a boolean varaible to compare or assign: "<< F->getVal() << "\n";
-          HasError = true;
-        } 
-      }
-    }
+    // else{
+    //   if (Node.getOperator() == Comparison::Ident){
+    //     Final* F = (Final*)(Node.getLeft());
+    //     if (BoolScope.find(F->getVal()) == BoolScope.end()) {
+    //       llvm::errs() << "you need a boolean varaible to compare or assign: "<< F->getVal() << "\n";
+    //       HasError = true;
+    //     } 
+    //   }
+    // }
 
     if (Node.getOperator() != Comparison::True && Node.getOperator() != Comparison::False && Node.getOperator() != Comparison::Ident){
       Final* L = (Final*)(Node.getLeft());
