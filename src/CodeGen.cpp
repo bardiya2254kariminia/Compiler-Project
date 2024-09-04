@@ -214,7 +214,10 @@ ns{
       if (Node.getKind() == Final::Ident)
       {
         // If the Final is an identifier, load its value from memory.
-        V = Builder.CreateLoad(Int32Ty, nameMapInt[Node.getVal()]);
+        if (isBool(Node.getVal())
+          V = Builder.CreateLoad(Int1Ty, nameMapBool[Node.getVal()]);
+        else
+          V = Builder.CreateLoad(Int32Ty, nameMapInt[Node.getVal()]);
       }
       else
       {
