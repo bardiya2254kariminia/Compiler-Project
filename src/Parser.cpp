@@ -26,7 +26,7 @@ Program *Parser::parseProgram()
                 
             break;
         }
-        case Token::KW_bool: {
+        case Token::KW_boolean: {
             DeclarationBool *dbool;
             dbool = parseBoolDec();
             if (dbool)
@@ -233,7 +233,7 @@ DeclarationBool *Parser::parseBoolDec()
     llvm::SmallVector<llvm::StringRef> Vars;
     llvm::SmallVector<Logic *> Values;
     
-    if (expect(Token::KW_bool)){
+    if (expect(Token::KW_boolean)){
         goto _error;
     }
     advance();

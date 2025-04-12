@@ -16,7 +16,7 @@ public:
         eoi,            // end of input
         unknown,        // in case of error at the lexical level
         ident,          // identifier
-        number,         // integer literal
+        number,         // integer and float literal
         assign,         // =
         minus_assign,   // -=
         plus_assign,    // +=
@@ -45,8 +45,14 @@ public:
         r_paren,        // )
         l_brace,        // {
         r_brace,        // }
+        ///////////////////////////////
         KW_int,         // int
-        KW_bool,        // bool
+        KW_float,       // float
+        KW_boolean,     // boolean
+        KW_string,      // string
+        KW_char,        // char
+        KW_array,       // array
+        ///////////////////////////////
         KW_true,        // true
         KW_false,       // false
         KW_if,          // if

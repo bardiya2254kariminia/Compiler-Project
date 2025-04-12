@@ -45,8 +45,16 @@ void Lexer::next(Token &token) {
         Token::TokenKind kind;
         if (Name == "int")
             kind = Token::KW_int;
-        else if (Name == "bool")
-            kind = Token::KW_bool;
+        else if (Name == "boolean")
+            kind = Token::KW_boolean;
+        else if (Name == "float")
+            kind = Token::KW_float;
+        else if (Name == "string")
+            kind = Token::KW_string;
+        else if (Name == "char")
+            kind = Token::KW_char;
+        else if (Name == "array")
+            kind = Token::KW_array;
         else if (Name == "print")
             kind = Token::KW_print;
         else if (Name == "while")
@@ -68,6 +76,7 @@ void Lexer::next(Token &token) {
         else
             kind = Token::ident;
         // generate the token
+        // llvm::errs() <<Token[token] <<"\n";
         formToken(token, end, kind);
         return;
     } else if (charinfo::isDigit(*BufferPtr)) { // check for numbers
@@ -203,7 +212,9 @@ void Lexer::next(Token &token) {
         }
         
         // generate the token
-        if (isFound) formToken(token, end, kind);
+
+        if (isFound) 
+            formToken(token, end, kind);
         else formToken(token, BufferPtr + 1, Token::unknown);
         return;
     } else {
