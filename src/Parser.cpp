@@ -154,6 +154,78 @@ _error:
     return nullptr;
 }
 
+
+DeclarationFloat *Parser::parseFloat()
+{
+    Expr *E = nullptr;
+    llvm::SmallVector<llvm::StringRef> Vars;
+    llvm::SmallVector<Expr *> Values;
+    
+    if (expect(Token::KW_float)){
+        goto _error;
+    }
+    advance();
+    if (expect(Token::ident)){
+        goto _error;
+    }
+
+    Vars.push_back(Tok.getText());
+    advance();
+
+    if (Tok.is(Token::assign))
+    {
+        advance();
+        E = parseExpr();
+        if(E){
+            Values.push_back(E);
+        }
+        else{
+            goto _error;
+        }
+    }
+    else
+    {
+        Values.push_back(new Final(Final::Number, llvm::StringRef("0")));
+    }
+    
+    
+    while (Tok.is(Token::comma))
+    {
+        advance();
+        if (expect(Token::ident)){
+            goto _error;
+        }
+            
+        Vars.push_back(Tok.getText());
+        advance();
+
+        if(Tok.is(Token::assign)){
+            advance();
+            E = parseExpr();
+            if(E){
+                Values.push_back(E);
+            }
+            else{
+                goto _error;
+            }
+        }
+        else{
+            Values.push_back(new Final(Final::Number, llvm::StringRef("0")));
+        }
+    }
+
+    if (expect(Token::semicolon)){
+        goto _error;
+    }
+
+
+    return new DeclarationInt(Vars, Values);
+_error: 
+    while (Tok.getKind() != Token::eoi)
+        advance();
+    return nullptr;
+}
+
 DeclarationInt *Parser::parseIntDec()
 {
     Expr *E = nullptr;
@@ -226,7 +298,6 @@ _error:
     return nullptr;
 }
 
-
 DeclarationBool *Parser::parseBoolDec()
 {
     Logic *L = nullptr;
@@ -296,8 +367,6 @@ _error:
         advance();
     return nullptr;
 }
-
-
 
 Assignment *Parser::parseBoolAssign()
 {
@@ -390,7 +459,6 @@ _error:
         return nullptr;
 }
 
-
 UnaryOp *Parser::parseUnary()
 {
     UnaryOp* Res = nullptr;
@@ -421,6 +489,7 @@ _error:
         advance();
     return nullptr;
 }
+
 Expr *Parser::parseExpr()
 {
     Expr *Left = parseTerm();
@@ -534,6 +603,11 @@ Expr *Parser::parseFinal()
     {
     case Token::number:{
         Res = new Final(Final::Number, Tok.getText());
+        advance();
+        break;
+    }
+    case Token::float_num:{
+        res = new Final(Final::Float, Tok.getText());
         advance();
         break;
     }
@@ -861,8 +935,6 @@ _error:
         advance();
     return nullptr;
 }
-
-
 
 PrintStmt *Parser::parsePrint()
 {

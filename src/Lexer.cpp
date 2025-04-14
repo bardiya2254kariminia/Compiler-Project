@@ -25,6 +25,9 @@ namespace charinfo
     {
         return c == '=' || c == '+' || c == '-' || c == '*' || c == '/' || c == '!' || c == '>' || c == '<' || c == '(' || c == ')' || c == '{' || c == '}'|| c == ',' || c == ';' || c == '%' || c == '^';
     }
+    LLVM_READNONE inline bool isDot(char c) {
+        return c == '.';
+    }
 }
 
 void Lexer::next(Token &token) {
@@ -81,10 +84,20 @@ void Lexer::next(Token &token) {
         return;
     } else if (charinfo::isDigit(*BufferPtr)) { // check for numbers
         const char *end = BufferPtr + 1;
-        while (charinfo::isDigit(*end))
+        while (charinfo::isDigit(*end)) {
             ++end;
+            if(charinfo::isDot(*end)) {
+                ++end;
+                while (charinfo::isDigit(*end))
+                    ++end;
+                formToken(token, end, Token::float_num);
+                return;
+
+            }
+        }
         formToken(token, end, Token::number);
         return;
+        
     } else if (charinfo::isSpecialCharacter(*BufferPtr)) {
         const char *endWithOneLetter = BufferPtr + 1;
         const char *endWithTwoLetter = BufferPtr + 2;

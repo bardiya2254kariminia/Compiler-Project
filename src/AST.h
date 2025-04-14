@@ -122,6 +122,31 @@ public:
   }
 };
 
+class DeclarationFloat : public Program
+{
+  using VarVector = llvm::SmallVector<llvm::StringRef>;
+  using ValueVector = llvm::SmallVector<Expr *>;
+  VarVector Vars;                           // Stores the list of variables
+  ValueVector Values;                       // Stores the list of initializers
+
+public:
+  // Declaration(llvm::SmallVector<llvm::StringRef> Vars, Expr *E) : Vars(Vars), E(E) {}
+  DeclarationFloat(llvm::SmallVector<llvm::StringRef> Vars, llvm::SmallVector<Expr *> Values) : Vars(Vars), Values(Values) {}
+
+  VarVector::const_iterator varBegin() { return Vars.begin(); }
+
+  VarVector::const_iterator varEnd() { return Vars.end(); }
+
+  ValueVector::const_iterator valBegin() { return Values.begin(); }
+
+  ValueVector::const_iterator valEnd() { return Values.end(); }
+
+  virtual void accept(ASTVisitor &V) override
+  {
+    V.visit(*this);
+  }
+};
+
 // Declaration class represents a variable declaration with an initializer in the AST
 class DeclarationBool : public Program
 {
@@ -156,7 +181,8 @@ public:
   enum ValueKind
   {
     Ident,
-    Number
+    Number,
+    Float
   };
 
 private:

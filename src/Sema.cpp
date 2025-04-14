@@ -7,6 +7,7 @@ namespace nms{
 class InputCheck : public ASTVisitor {
   llvm::StringSet<> IntScope; // StringSet to store declared int variables
   llvm::StringSet<> BoolScope;
+  llvm::StringSet<> FloatScope;
   bool HasError; // Flag to indicate if an error occurred
 
   enum ErrorType { Twice, Not }; // Enum to represent error types: Twice - variable declared twice, Not - variable not declared
@@ -41,7 +42,7 @@ public:
   virtual void visit(Final &Node) override {
     if (Node.getKind() == Final::Ident) {
       // Check if identifier is in the scope
-      if (IntScope.find(Node.getVal()) == IntScope.end() && BoolScope.find(Node.getVal()) == BoolScope.end())
+      if (IntScope.find(Node.getVal()) == IntScope.end() && BoolScope.find(Node.getVal()) == BoolScope.end() && FloatScope.find(Node.getVal()) == FloatScope.end())
         error(Not, Node.getVal());
     }
   };
@@ -100,8 +101,8 @@ public:
 
     dest->accept(*this);
 
-    if (dest->getKind() == Final::Number) {
-        llvm::errs() << "Assignment destination must be an identifier, not a number.";
+    if (dest->getKind() == Final::Number || dest->getKind() == Final::Float) {
+        llvm::errs() << "Assignment destination must be an identifier, not a number or float";
         HasError = true;
     }
 

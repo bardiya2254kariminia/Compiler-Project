@@ -17,6 +17,7 @@ public:
         unknown,        // in case of error at the lexical level
         ident,          // identifier
         number,         // integer and float literal
+        float_num,
         assign,         // =
         minus_assign,   // -=
         plus_assign,    // +=
