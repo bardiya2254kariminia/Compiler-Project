@@ -1,1 +1,2 @@
-int a =10;
+float a =10.03;
+int b =10;

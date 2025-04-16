@@ -26,6 +26,16 @@ Program *Parser::parseProgram()
                 
             break;
         }
+        case Token::KW_float: {
+            DeclarationFloat *d;
+            d = parseFloatDec();
+            if (d)
+                data.push_back(d);
+            else
+                goto _error;
+                
+            break;
+        }
         case Token::KW_boolean: {
             DeclarationBool *dbool;
             dbool = parseBoolDec();
@@ -154,8 +164,7 @@ _error:
     return nullptr;
 }
 
-
-DeclarationFloat *Parser::parseFloat()
+DeclarationFloat *Parser::parseFloatDec()
 {
     Expr *E = nullptr;
     llvm::SmallVector<llvm::StringRef> Vars;
@@ -219,7 +228,7 @@ DeclarationFloat *Parser::parseFloat()
     }
 
 
-    return new DeclarationInt(Vars, Values);
+    return new DeclarationFloat(Vars, Values);
 _error: 
     while (Tok.getKind() != Token::eoi)
         advance();
@@ -607,7 +616,7 @@ Expr *Parser::parseFinal()
         break;
     }
     case Token::float_num:{
-        res = new Final(Final::Float, Tok.getText());
+        Res = new Final(Final::Float, Tok.getText());
         advance();
         break;
     }

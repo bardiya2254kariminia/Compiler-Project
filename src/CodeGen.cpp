@@ -24,16 +24,22 @@ ns{
     Constant *Int32One;
     Constant *Int1False;
     Constant *Int1True;
+    Type *FloatTy;
+    Constant *FloatZero;
 
     Value *V;
     StringMap<AllocaInst *> nameMapInt;
     StringMap<AllocaInst *> nameMapBool;
+    StringMap<AllocaInst *> nameMapFloat;
 
     FunctionType *PrintIntFnTy;
     Function *PrintIntFn;
 
     FunctionType *PrintBoolFnTy;
     Function *PrintBoolFn;
+
+    FunctionType *PrintFloatFnTy; 
+    Function *PrintFloatFn;       
 
   public:
     // Constructor for the visitor class.
@@ -50,6 +56,9 @@ ns{
       Int1True = ConstantInt::getTrue(Int1Ty);
       Int32Zero = ConstantInt::get(Int32Ty, 0, true);
       Int32One = ConstantInt::get(Int32Ty, 1, true);
+      
+      FloatTy = Type::getFloatTy(M->getContext());
+      FloatZero = ConstantFP::get(FloatTy, 0.0);
 
       
       PrintIntFnTy = FunctionType::get(VoidTy, {Int32Ty}, false);
@@ -59,6 +68,8 @@ ns{
       PrintBoolFnTy = FunctionType::get(VoidTy, {Int1Ty}, false);
       // Create a function declaration for the "compiler_write" function.
       PrintBoolFn = Function::Create(PrintBoolFnTy, GlobalValue::ExternalLinkage, "print_bool", M);
+      PrintFloatFnTy = FunctionType::get(VoidTy, {FloatTy}, false);
+      PrintFloatFn = Function::Create(PrintFloatFnTy, GlobalValue::ExternalLinkage, "print_float", M);
     }
 
     // Entry point for generating LLVM IR from the AST.
@@ -128,6 +139,44 @@ ns{
         itVal++;
       }
     };
+
+    virtual void visit(DeclarationFloat &Node) override{
+      llvm::SmallVector<Value *, 8> vals;
+
+      // Iterate over the initial value expressions
+      llvm::SmallVector<Expr *, 8>::const_iterator E = Node.valBegin();
+      for (llvm::SmallVector<llvm::StringRef, 8>::const_iterator Var = Node.varBegin(), End = Node.varEnd(); Var != End; ++Var){
+        if (E < Node.valEnd() && *E != nullptr)
+        {
+          (*E)->accept(*this); // Visit expression, sets V
+          vals.push_back(V);
+        }
+        else
+        {
+          vals.push_back(nullptr); // No initializer
+        }
+        E++;
+      }
+
+      // Now allocate and initialize each float variable
+      llvm::SmallVector<Value *, 8>::const_iterator itVal = vals.begin();
+      for (llvm::SmallVector<llvm::StringRef, 8>::const_iterator S = Node.varBegin(), End = Node.varEnd(); S != End; ++S){
+        StringRef Var = *S;
+
+        // Allocate space for a float variable
+        nameMapFloat[Var] = Builder.CreateAlloca(FloatTy);
+
+        if (*itVal != nullptr)
+        {
+          Builder.CreateStore(*itVal, nameMapFloat[Var]);
+        }
+        else
+        {
+          Builder.CreateStore(FloatZero, nameMapFloat[Var]);
+        }
+        itVal++;
+      }
+    }
 
     virtual void visit(DeclarationBool &Node) override
     {
@@ -209,22 +258,61 @@ ns{
 
     };
 
-    virtual void visit(Final &Node) override
-    {
-      if (Node.getKind() == Final::Ident)
-      {
-        // If the Final is an identifier, load its value from memory.
-        if (isBool(Node.getVal()))
-          V = Builder.CreateLoad(Int1Ty, nameMapBool[Node.getVal()]);
-        else
-          V = Builder.CreateLoad(Int32Ty, nameMapInt[Node.getVal()]);
-      }
-      else
-      {
-        // If the Final is a literal, convert it to an integer and create a constant.
-        int intval;
-        Node.getVal().getAsInteger(10, intval);
-        V = ConstantInt::get(Int32Ty, intval, true);
+    // virtual void visit(Final &Node) override
+    // {
+    //   if (Node.getKind() == Final::Ident)
+    //   {
+    //     // If the Final is an identifier, load its value from memory.
+    //     if (isBool(Node.getVal()))
+    //       V = Builder.CreateLoad(Int1Ty, nameMapBool[Node.getVal()]);
+    //     else if(nameMapInt.find(Var) != nameMapInt.end()) 
+    //       V = Builder.CreateLoad(Int32Ty, nameMapInt[Node.getVal()]);
+    //     else
+    //       V = Builder.CreateLoad(FloatTy, nameMapFloat[Node.getVal()]);
+
+    //   }
+    //   else
+    //   {
+    //     // If the Final is a literal, convert it to an integer and create a constant.
+    //     int intval;
+    //     Node.getVal().getAsInteger(10, intval);
+    //     V = ConstantInt::get(Int32Ty, intval, true);
+    //     if(Node.getKind() == Final::Float){
+    //       Node.getVal().getAsFloat(10, intval);
+    //       V = ConstantFP::get(FloatTy, intval, true);
+    //     } else if (Node.getKind() == Final::Number){
+    //       Node.getVal().getAsFloat(10, intval);
+    //       V = ConstantFP::get(FloatTy, intval, true);
+    //     }
+
+    //   }
+    // };
+    virtual void visit(Final &Node) override {
+      StringRef val = Node.getVal();
+
+      if (Node.getKind() == Final::Ident) {
+          // If the Final is an identifier, load from the corresponding map
+          if (nameMapBool.count(val))
+              V = Builder.CreateLoad(Int1Ty, nameMapBool[val]);
+          else if (nameMapInt.count(val))
+              V = Builder.CreateLoad(Int32Ty, nameMapInt[val]);
+          else if (nameMapFloat.count(val))
+              V = Builder.CreateLoad(FloatTy, nameMapFloat[val]);
+          else
+              llvm::report_fatal_error("Undefined variable: " + val);
+      } else {
+          // If it's a literal, check the kind and generate the appropriate constant
+          if (Node.getKind() == Final::Float) {
+              double floatVal;
+              val.getAsDouble(floatVal); // NOT getAsFloat (that doesn’t exist)
+              V = ConstantFP::get(FloatTy, floatVal);
+          } else if (Node.getKind() == Final::Number) {
+              int intVal;
+              val.getAsInteger(10, intVal);
+              V = ConstantInt::get(Int32Ty, intVal, true);
+          } else {
+              llvm::report_fatal_error("Unknown literal kind");
+          }
       }
     };
 

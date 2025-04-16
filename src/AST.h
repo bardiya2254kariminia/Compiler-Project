@@ -9,6 +9,7 @@ class AST;
 class Expr;
 class Program;
 class DeclarationInt;
+class DeclarationFloat;
 class DeclarationBool;
 class Final;
 class BinaryOp;
@@ -49,6 +50,7 @@ public:
   virtual void visit(elifStmt &) = 0;        // Visit the elifStmt node
   virtual void visit(ForStmt &) = 0;
   virtual void visit(PrintStmt &) = 0;
+  virtual void visit(DeclarationFloat &) = 0; // Visit the float variable declaration node
 };
 
 // AST class serves as the base class for all AST nodes
@@ -126,8 +128,8 @@ class DeclarationFloat : public Program
 {
   using VarVector = llvm::SmallVector<llvm::StringRef>;
   using ValueVector = llvm::SmallVector<Expr *>;
-  VarVector Vars;                           // Stores the list of variables
-  ValueVector Values;                       // Stores the list of initializers
+  VarVector Vars;      // Stores the list of variables
+  ValueVector Values;  // Stores the list of initializers
 
 public:
   // Declaration(llvm::SmallVector<llvm::StringRef> Vars, Expr *E) : Vars(Vars), E(E) {}

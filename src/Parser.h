@@ -42,7 +42,7 @@ class Parser
 
     Program *parseProgram();
     DeclarationInt *parseIntDec();
-    DeclarationFloat *parseFloat();
+    DeclarationFloat *parseFloatDec();
     DeclarationBool *parseBoolDec();
     Assignment *parseBoolAssign();
     Assignment *parseIntAssign();
