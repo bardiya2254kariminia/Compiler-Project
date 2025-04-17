@@ -8,8 +8,7 @@ Program *Parser::parse()
     return Res;
 }
 
-Program *Parser::parseProgram()
-{
+Program *Parser::parseProgram(){
     llvm::SmallVector<AST *> data;
     
     while (!Tok.is(Token::eoi))
@@ -19,6 +18,17 @@ Program *Parser::parseProgram()
         case Token::KW_int: {
             DeclarationInt *d;
             d = parseIntDec();
+            if (d)
+                data.push_back(d);
+            else
+                goto _error;
+                
+            break;
+        }
+        case Token::KW_char: {
+            // DeclarationChar *d;
+            DeclarationChar *d;
+            d = parseCharDec();
             if (d)
                 data.push_back(d);
             else
@@ -164,6 +174,7 @@ _error:
     return nullptr;
 }
 
+// declarations
 DeclarationFloat *Parser::parseFloatDec()
 {
     Expr *E = nullptr;
@@ -307,6 +318,78 @@ _error:
     return nullptr;
 }
 
+DeclarationChar *Parser::parseCharDec()
+{
+    Expr *E = nullptr;
+    llvm::SmallVector<llvm::StringRef> Vars;
+    llvm::SmallVector<Expr *> Values;
+    
+    if (expect(Token::KW_char)){
+        goto _error;
+    }
+    advance();
+    
+    if (expect(Token::ident)){
+        goto _error;
+    }
+
+    Vars.push_back(Tok.getText());
+    advance();
+
+    if (Tok.is(Token::assign))
+    {
+        advance();
+        E = parseExpr();
+        if(E){
+            Values.push_back(E);
+        }
+        else{
+            goto _error;
+        }
+    }
+    else
+    {
+        Values.push_back(new Final(Final::Number, llvm::StringRef("\\0")));
+    }
+    
+    
+    while (Tok.is(Token::comma))
+    {
+        advance();
+        if (expect(Token::ident)){
+            goto _error;
+        }
+            
+        Vars.push_back(Tok.getText());
+        advance();
+
+        if(Tok.is(Token::assign)){
+            advance();
+            E = parseExpr();
+            if(E){
+                Values.push_back(E);
+            }
+            else{
+                goto _error;
+            }
+        }
+        else{
+            Values.push_back(new Final(Final::Number, llvm::StringRef("\\0")));
+        }
+    }
+
+    if (expect(Token::semicolon)){
+        goto _error;
+    }
+
+
+    return new DeclarationChar(Vars, Values);
+_error: 
+    while (Tok.getKind() != Token::eoi)
+        advance();
+    return nullptr;
+}
+
 DeclarationBool *Parser::parseBoolDec()
 {
     Logic *L = nullptr;
@@ -377,6 +460,7 @@ _error:
     return nullptr;
 }
 
+// assignments
 Assignment *Parser::parseBoolAssign()
 {
     Final *F = nullptr;
@@ -468,6 +552,97 @@ _error:
         return nullptr;
 }
 
+Assignment *Parser::parseFloatAssign()
+{
+    Expr *E = nullptr;
+    Final *F = nullptr;
+    Assignment::AssignKind AK;
+    F = (Final *)(parseFinal());
+    if (F == nullptr)
+    {
+        goto _error;
+    }
+    
+    if (Tok.is(Token::assign))
+    {
+        AK = Assignment::Assign;
+    }
+    else if (Tok.is(Token::plus_assign))
+    {
+        AK = Assignment::Plus_assign;
+    }
+    else if (Tok.is(Token::minus_assign))
+    {
+        AK = Assignment::Minus_assign;
+    }
+    else if (Tok.is(Token::star_assign))
+    {
+        AK = Assignment::Star_assign;
+    }
+    else if (Tok.is(Token::slash_assign))
+    {
+        AK = Assignment::Slash_assign;
+    }
+    else
+    {
+        goto _error;
+    }
+    advance();
+    E = parseExpr();    // check for mathematical expr
+    if(E){
+        return new Assignment(F, E, AK, nullptr);
+    }
+    else{
+        goto _error;
+    }
+
+_error:
+        while (Tok.getKind() != Token::eoi)
+            advance();
+        return nullptr;
+}
+
+Assignment *Parser::parseCharAssign()
+{
+    Final *F = nullptr;
+    Assignment::AssignKind AK;
+    Expr *E = nullptr;
+
+    F = (Final *)(parseFinal());
+    if (F == nullptr)
+    {
+        goto _error;
+    }
+    
+    if (Tok.is(Token::assign))
+    {
+        AK = Assignment::Assign;
+        advance();
+        if (Tok.is(Token::character)) {
+            E = new Final(Final::Char, Tok.getText());
+            advance();
+        }
+        else {
+            goto _error;
+        }
+        if(E){
+            return new Assignment(F, E, AK, nullptr);
+        }
+        else{
+            goto _error;
+        }
+    }
+    else
+    {
+        goto _error;
+    }
+    
+_error:
+    while (Tok.getKind() != Token::eoi)
+        advance();
+    return nullptr;
+}
+// unary
 UnaryOp *Parser::parseUnary()
 {
     UnaryOp* Res = nullptr;
@@ -499,6 +674,7 @@ _error:
     return nullptr;
 }
 
+// expressions
 Expr *Parser::parseExpr()
 {
     Expr *Left = parseTerm();
@@ -605,8 +781,7 @@ _error:
     return nullptr;
 }
 
-Expr *Parser::parseFinal()
-{
+Expr *Parser::parseFinal(){
     Expr *Res = nullptr;
     switch (Tok.getKind())
     {
@@ -617,6 +792,11 @@ Expr *Parser::parseFinal()
     }
     case Token::float_num:{
         Res = new Final(Final::Float, Tok.getText());
+        advance();
+        break;
+    }
+    case Token::character:{
+        Res = new Final(Final::Char, Tok.getText());
         advance();
         break;
     }
@@ -688,6 +868,7 @@ _error:
     return nullptr;
 }
 
+// logic and comparisions
 Logic *Parser::parseComparison()
 {
     Logic *Res = nullptr;
@@ -804,6 +985,7 @@ _error:
     return nullptr;
 }
 
+// if,print,while,for,comments
 IfStmt *Parser::parseIf()
 {
     llvm::SmallVector<AST *> ifStmts;
@@ -1133,6 +1315,7 @@ _error:
         advance();
 }
 
+// the other parts of the codes
 llvm::SmallVector<AST *> Parser::getBody()
 {
     llvm::SmallVector<AST *> body;
@@ -1176,6 +1359,8 @@ llvm::SmallVector<AST *> Parser::getBody()
             
             Assignment *a_int;
             Assignment *a_bool;
+            Assignment *a_float;
+            Assignment *a_char;
             prev_token = Tok;
             prev_buffer = Lex.getBuffer();
 
@@ -1191,6 +1376,20 @@ llvm::SmallVector<AST *> Parser::getBody()
             a_int = parseIntAssign();
             if (a_int)
                 body.push_back(a_int);
+                
+            Tok = prev_token;
+            Lex.setBufferPtr(prev_buffer);
+
+            a_float = parseFloatAssign();
+            if (a_float)
+                body.push_back(a_float);
+                
+            Tok = prev_token;
+            Lex.setBufferPtr(prev_buffer);
+
+            a_char = parseFloatAssign();
+            if (a_char)
+                body.push_back(a_char);
             else
                 goto _error;
             if (!Tok.is(Token::semicolon))

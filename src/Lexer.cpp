@@ -98,6 +98,33 @@ void Lexer::next(Token &token) {
         formToken(token, end, Token::number);
         return;
         
+    }else if (*BufferPtr == '\'') {  // Character literal
+        const char *end = BufferPtr + 1;
+        if (*end && *end != '\'') {
+            ++end; // skip the character
+            if (*end == '\'') {
+                formToken(token, end + 1, Token::character);
+            } else {
+                formToken(token, end, Token::unknown);
+            }
+        } else {
+            formToken(token, end, Token::unknown);
+        }
+        return;
+    }else if (charinfo::isDigit(*BufferPtr)) {
+        const char *end = BufferPtr + 1;
+        while (charinfo::isDigit(*end)) ++end;
+        
+        // Check for float
+        if (*end == '.' && charinfo::isDigit(end[1])) {
+            ++end; // skip the dot
+            while (charinfo::isDigit(*++end)) {}
+            formToken(token, end, Token::float_num);
+        } 
+        else {
+            formToken(token, end, Token::number);
+        }
+        return;
     } else if (charinfo::isSpecialCharacter(*BufferPtr)) {
         const char *endWithOneLetter = BufferPtr + 1;
         const char *endWithTwoLetter = BufferPtr + 2;

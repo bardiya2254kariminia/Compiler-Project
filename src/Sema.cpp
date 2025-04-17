@@ -8,6 +8,8 @@ class InputCheck : public ASTVisitor {
   llvm::StringSet<> IntScope; // StringSet to store declared int variables
   llvm::StringSet<> BoolScope; // StringSet to store declared int variables
   llvm::StringSet<> FloatScope; // StringSet to store declared int variables
+  llvm::StringSet<> CharScope; // StringSet to store declared int variables
+
   bool HasError; // Flag to indicate if an error occurred
 
   enum ErrorType { Twice, Not }; // Enum to represent error types: Twice - variable declared twice, Not - variable not declared
@@ -93,7 +95,7 @@ public:
     
   };
 
-  // Visit function for Assignment nodes
+  // Visit function for Assignment nodes and declarations
   virtual void visit(Assignment &Node) override {
     Final *dest = Node.getLeft();
     Expr *RightExpr;
@@ -101,7 +103,7 @@ public:
 
     dest->accept(*this);
 
-    if (dest->getKind() == Final::Number || dest->getKind() == Final::Float) {
+    if (dest->getKind() == Final::Number || dest->getKind() == Final::Float || dest->getKind() == Final::Char) {
         llvm::errs() << "Assignment destination must be an identifier, not a number or float";
         HasError = true;
     }
@@ -119,9 +121,7 @@ public:
         llvm::errs() << "you should assign a boolean value to boolean variable: " << dest->getVal() << "\n";
         HasError = true;
       }
-    }
-      
-    else if (IntScope.find(dest->getVal()) != IntScope.end()){
+    }else if (IntScope.find(dest->getVal()) != IntScope.end()){
       RightExpr = Node.getRightExpr();
       RightLogic = Node.getRightLogic();
       if (RightExpr){
@@ -144,12 +144,92 @@ public:
           }
         }
         
+      }else{
+        llvm::errs() << "you should assign an integer value to an integer variable: " << dest->getVal() << "\n";
+        HasError = true;
+      }
+        
+    }else if (FloatScope.find(dest->getVal()) != FloatScope.end()){
+      RightExpr = Node.getRightExpr();
+      RightLogic = Node.getRightLogic();
+      if (RightExpr){
+        RightExpr->accept(*this);
+      }
+      else if(RightLogic){
+        RightLogic->accept(*this);
+        Comparison* RL = (Comparison*) RightLogic;
+        if (RL){
+          if (RL->getOperator() == Comparison::Ident){
+            Final* F = (Final*)(RL->getLeft());
+            if (FloatScope.find(F->getVal()) == FloatScope.end()) {
+              llvm::errs() << "you should assign an integer value to an integer variable: " << dest->getVal() << "\n";
+              HasError = true;
+            } 
+          }
+          else{
+            llvm::errs() << "you should assign an integer value to an integer variable: " << dest->getVal() << "\n";
+            HasError = true;
+          }
+        }
+        
       }
       else{
         llvm::errs() << "you should assign an integer value to an integer variable: " << dest->getVal() << "\n";
         HasError = true;
       }
         
+    }else if (CharScope.find(dest->getVal()) != CharScope.end()) {
+        // RightExpr = Node.getRightExpr();
+        // if (RightExpr) {
+        //     RightExpr->accept(*this);
+            
+        //     // RHS must be a character literal (e.g., 'a')
+        //     if (Final* rightFinal = llvm::dyn_cast<Final>(RightExpr)) {
+        //         if (rightFinal->getKind() != Final::Char) {
+        //             llvm::errs() << "You should assign a character value to character variable: " << dest->getVal() << "\n";
+        //             HasError = true;
+        //         }
+        //     } else {
+        //         llvm::errs() << "You should assign a character value to character variable: " << dest->getVal() << "\n";
+        //         HasError = true;
+        //     }
+            
+        //     // Only `=` is allowed (no `+=`, etc.)
+        //     if (Node.getAssignKind() != Assignment::AssignKind::Assign) {
+        //         llvm::errs() << "Cannot use compound assignment with character variable: " << dest->getVal() << "\n";
+        //         HasError = true;
+        //     }
+        // } else {
+        //     llvm::errs() << "You should assign a character value to character variable: " << dest->getVal() << "\n";
+        //     HasError = true;
+        // }
+      RightExpr = Node.getRightExpr();
+      RightLogic = Node.getRightLogic();
+      if (RightExpr){
+        RightExpr->accept(*this);
+      }
+      else if(RightLogic){
+        RightLogic->accept(*this);
+        Comparison* RL = (Comparison*) RightLogic;
+        if (RL){
+          if (RL->getOperator() == Comparison::Ident){
+            Final* F = (Final*)(RL->getLeft());
+            if (FloatScope.find(F->getVal()) == FloatScope.end()) {
+              llvm::errs() << "you shouldn't assign an float value to an char variable: " << dest->getVal() << "\n";
+              HasError = true;
+            } 
+          }
+          else{
+            llvm::errs() << "you should assign an integer value to an integer variable: " << dest->getVal() << "\n";
+            HasError = true;
+          }
+        }
+        
+      }
+      else{
+        llvm::errs() << "you should assign an integer value to an integer variable: " << dest->getVal() << "\n";
+        HasError = true;
+      }
     }
     
     
@@ -208,6 +288,31 @@ public:
     }
   };
 
+  virtual void visit(DeclarationChar &Node) override {
+    for (llvm::SmallVector<Expr *>::const_iterator I = Node.valBegin(), E = Node.valEnd(); I != E; ++I){
+      (*I)->accept(*this); // If the Declaration node has an expression, recursively visit the expression node
+    }
+    for (llvm::SmallVector<llvm::StringRef>::const_iterator I = Node.varBegin(), E = Node.varEnd(); I != E;
+         ++I) {
+      if(BoolScope.find(*I) != BoolScope.end()){
+        llvm::errs() << "Variable " << *I << " is already declared as an boolean" << "\n";
+        HasError = true; 
+      }
+      else if(IntScope.find(*I) != IntScope.end()){
+        llvm::errs() << "Variable " << *I << " is already declared as an boolean" << "\n";
+        HasError = true; 
+      }
+      else if(FloatScope.find(*I) != FloatScope.end()){
+        llvm::errs() << "Variable " << *I << " is already declared as an boolean" << "\n";
+        HasError = true; 
+      }
+      else{
+        if (!CharScope.insert(*I).second)
+          error(Twice, *I); // If the insertion fails (element already exists in Scope), report a "Twice" error
+      }
+    }
+  };
+
   virtual void visit(DeclarationBool &Node) override {
     for (llvm::SmallVector<Logic *>::const_iterator I = Node.valBegin(), E = Node.valEnd(); I != E; ++I){
       (*I)->accept(*this); // If the Declaration node has an expression, recursively visit the expression node
@@ -226,6 +331,8 @@ public:
     
   };
 
+
+  // comparision and logical and other type
   virtual void visit(Comparison &Node) override {
     if(Node.getLeft()){
       Node.getLeft()->accept(*this);

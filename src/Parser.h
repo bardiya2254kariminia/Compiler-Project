@@ -41,23 +41,33 @@ class Parser
     }
 
     Program *parseProgram();
+    // declarations
     DeclarationInt *parseIntDec();
     DeclarationFloat *parseFloatDec();
+    DeclarationChar *parseCharDec();
     DeclarationBool *parseBoolDec();
+    // assignments
     Assignment *parseBoolAssign();
     Assignment *parseIntAssign();
+    Assignment *parseCharAssign();
+    Assignment *parseFloatAssign();
+    // unary
     UnaryOp *parseUnary();
+    // expressions
     Expr *parseExpr();
     Expr *parseTerm();
     Expr *parseFinal();
     Expr *parseFactor();
+    // logic and comparision
     Logic *parseLogic();
     Logic *parseComparison();
+    // if,else,for,print,comment expression
     IfStmt *parseIf();
     WhileStmt *parseWhile();
     ForStmt *parseFor();
     PrintStmt *parsePrint();
     void parseComment();
+    // the body part for other results
     llvm::SmallVector<AST *> getBody();
 
 public:

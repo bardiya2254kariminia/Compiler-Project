@@ -17,29 +17,35 @@ ns{
     IRBuilder<> Builder;
     Type *VoidTy;
     Type *Int1Ty;
-    Type *Int32Ty;
+    Type *Int32Ty; //for int
+    Type *Int8Ty;  // for char
     Type *Int8PtrTy;
     Type *Int8PtrPtrTy;
     Constant *Int32Zero;
     Constant *Int32One;
     Constant *Int1False;
     Constant *Int1True;
-    Type *FloatTy;
-    Constant *FloatZero;
+    Type *FloatTy; //for float
+    Constant *FloatZero; //defalut  zero for float
+    Constant *Int8Zero;  // Default zero value for chars
 
     Value *V;
     StringMap<AllocaInst *> nameMapInt;
     StringMap<AllocaInst *> nameMapBool;
     StringMap<AllocaInst *> nameMapFloat;
-
+    StringMap<AllocaInst *> nameMapChar;
+    // int print
     FunctionType *PrintIntFnTy;
     Function *PrintIntFn;
-
+    // bool print
     FunctionType *PrintBoolFnTy;
     Function *PrintBoolFn;
-
+    // float print
     FunctionType *PrintFloatFnTy; 
-    Function *PrintFloatFn;       
+    Function *PrintFloatFn;      
+    // chhar print
+    FunctionType *PrintCharFnTy;
+    Function *PrintCharFn; 
 
   public:
     // Constructor for the visitor class.
@@ -60,16 +66,23 @@ ns{
       FloatTy = Type::getFloatTy(M->getContext());
       FloatZero = ConstantFP::get(FloatTy, 0.0);
 
+      Int8Ty = Type::getInt8Ty(M->getContext());
+      Int8Zero = ConstantInt::get(Int8Ty, 0, true);
+
       
-      PrintIntFnTy = FunctionType::get(VoidTy, {Int32Ty}, false);
       // Create a function declaration for the "compiler_write" function.
+      PrintIntFnTy = FunctionType::get(VoidTy, {Int32Ty}, false);
       PrintIntFn = Function::Create(PrintIntFnTy, GlobalValue::ExternalLinkage, "print_int", M);
 
-      PrintBoolFnTy = FunctionType::get(VoidTy, {Int1Ty}, false);
       // Create a function declaration for the "compiler_write" function.
+      PrintBoolFnTy = FunctionType::get(VoidTy, {Int1Ty}, false);
       PrintBoolFn = Function::Create(PrintBoolFnTy, GlobalValue::ExternalLinkage, "print_bool", M);
+      // Create a function declaration for the "compiler_write" function.
       PrintFloatFnTy = FunctionType::get(VoidTy, {FloatTy}, false);
       PrintFloatFn = Function::Create(PrintFloatFnTy, GlobalValue::ExternalLinkage, "print_float", M);
+      // Create a function declaration for the "compiler_write" function.
+      PrintCharFnTy = FunctionType::get(VoidTy, {Int8Ty}, false);
+      PrintCharFn = Function::Create(PrintCharFnTy, GlobalValue::ExternalLinkage, "print_char", M);
     }
 
     // Entry point for generating LLVM IR from the AST.
@@ -90,7 +103,7 @@ ns{
       Builder.CreateRet(Int32Zero);
     }
 
-    // Visit function for the Program node in the AST.
+    // Visit function for the Program node in the AST. and  declarations
     virtual void visit(Program &Node) override
     {
       // Iterate over the children of the Program node and visit each child.
@@ -217,7 +230,35 @@ ns{
         itVal++;
       }
     };
-    // TODO
+    
+    virtual void visit(DeclarationChar &Node) override {
+    llvm::SmallVector<Value *, 8> vals;
+
+    llvm::SmallVector<Expr *, 8>::const_iterator E = Node.valBegin();
+    for (llvm::SmallVector<llvm::StringRef, 8>::const_iterator Var = Node.varBegin(), End = Node.varEnd(); Var != End; ++Var) {
+        if (E < Node.valEnd() && *E != nullptr) {
+            (*E)->accept(*this);
+            vals.push_back(V);
+        } else {
+            vals.push_back(nullptr);
+        }
+        E++;
+    }
+
+    llvm::SmallVector<Value *, 8>::const_iterator itVal = vals.begin();
+    for (llvm::SmallVector<llvm::StringRef, 8>::const_iterator S = Node.varBegin(), End = Node.varEnd(); S != End; ++S) {
+        StringRef Var = *S;
+        nameMapChar[Var] = Builder.CreateAlloca(Int8Ty);
+        
+        if (*itVal != nullptr) {
+            Builder.CreateStore(*itVal, nameMapChar[Var]);
+        } else {
+            Builder.CreateStore(Int8Zero, nameMapChar[Var]);
+        }
+        itVal++;
+    }
+}
+
     virtual void visit(Assignment &Node) override
     {
       // Get the name of the variable being assigned.
@@ -258,35 +299,7 @@ ns{
 
     };
 
-    // virtual void visit(Final &Node) override
-    // {
-    //   if (Node.getKind() == Final::Ident)
-    //   {
-    //     // If the Final is an identifier, load its value from memory.
-    //     if (isBool(Node.getVal()))
-    //       V = Builder.CreateLoad(Int1Ty, nameMapBool[Node.getVal()]);
-    //     else if(nameMapInt.find(Var) != nameMapInt.end()) 
-    //       V = Builder.CreateLoad(Int32Ty, nameMapInt[Node.getVal()]);
-    //     else
-    //       V = Builder.CreateLoad(FloatTy, nameMapFloat[Node.getVal()]);
-
-    //   }
-    //   else
-    //   {
-    //     // If the Final is a literal, convert it to an integer and create a constant.
-    //     int intval;
-    //     Node.getVal().getAsInteger(10, intval);
-    //     V = ConstantInt::get(Int32Ty, intval, true);
-    //     if(Node.getKind() == Final::Float){
-    //       Node.getVal().getAsFloat(10, intval);
-    //       V = ConstantFP::get(FloatTy, intval, true);
-    //     } else if (Node.getKind() == Final::Number){
-    //       Node.getVal().getAsFloat(10, intval);
-    //       V = ConstantFP::get(FloatTy, intval, true);
-    //     }
-
-    //   }
-    // };
+    // the final and others 
     virtual void visit(Final &Node) override {
       StringRef val = Node.getVal();
 
@@ -298,6 +311,8 @@ ns{
               V = Builder.CreateLoad(Int32Ty, nameMapInt[val]);
           else if (nameMapFloat.count(val))
               V = Builder.CreateLoad(FloatTy, nameMapFloat[val]);
+          else if (nameMapChar.count(val))
+            V = Builder.CreateLoad(Int8Ty, nameMapChar[val]);
           else
               llvm::report_fatal_error("Undefined variable: " + val);
       } else {
@@ -310,7 +325,12 @@ ns{
               int intVal;
               val.getAsInteger(10, intVal);
               V = ConstantInt::get(Int32Ty, intVal, true);
-          } else {
+          }else if (Node.getKind() == Final::Char) {
+            // Handle character literals (assuming format like 'a')
+            char charVal;  // Simple case - may need more complex parsing
+            val.getAsInteger(10,charVal);
+            V = ConstantInt::get(Int8Ty, charVal); 
+          }else {
               llvm::report_fatal_error("Unknown literal kind");
           }
       }
@@ -512,14 +532,22 @@ ns{
     virtual void visit(PrintStmt &Node) override
     {
       // Visit the right-hand side of the assignment and get its value.
-      if (isBool(Node.getVar())){
+      if (isBool(Node.getVar())) {
         V = Builder.CreateLoad(Int1Ty, nameMapBool[Node.getVar()]);
         CallInst *Call = Builder.CreateCall(PrintBoolFnTy, PrintBoolFn, {V});
       }
-      else{
-        V = Builder.CreateLoad(Int32Ty, nameMapInt[Node.getVar()]);
-        CallInst *Call = Builder.CreateCall(PrintIntFnTy, PrintIntFn, {V});
-      }      
+      else if (nameMapInt.count(Node.getVar())) {
+          V = Builder.CreateLoad(Int32Ty, nameMapInt[Node.getVar()]);
+          CallInst *Call = Builder.CreateCall(PrintIntFnTy, PrintIntFn, {V});
+      }
+      else if (nameMapFloat.count(Node.getVar())) {
+          V = Builder.CreateLoad(FloatTy, nameMapFloat[Node.getVar()]);
+          CallInst *Call = Builder.CreateCall(PrintFloatFnTy, PrintFloatFn, {V});
+      }
+      else if (nameMapChar.count(Node.getVar())) {
+          V = Builder.CreateLoad(Int8Ty, nameMapChar[Node.getVar()]);
+          CallInst *Call = Builder.CreateCall(PrintCharFnTy, PrintCharFn, {V});
+      }  
     };
 
     virtual void visit(WhileStmt &Node) override

@@ -10,6 +10,7 @@ class Expr;
 class Program;
 class DeclarationInt;
 class DeclarationFloat;
+class DeclarationChar;
 class DeclarationBool;
 class Final;
 class BinaryOp;
@@ -51,6 +52,7 @@ public:
   virtual void visit(ForStmt &) = 0;
   virtual void visit(PrintStmt &) = 0;
   virtual void visit(DeclarationFloat &) = 0; // Visit the float variable declaration node
+  virtual void visit(DeclarationChar &) = 0; //Visit the char variable  declerations
 };
 
 // AST class serves as the base class for all AST nodes
@@ -62,19 +64,23 @@ public:
 };
 
 // Expr class represents an expression in the AST
+// expression
 class Expr : public AST
 {
 public:
   Expr() {}
 };
 
+// logic
 class Logic : public AST
 {
 public:
   Logic() {}
 };
 
+
 // Program class represents a group of expressions in the AST
+// the program
 class Program : public AST
 {
   using dataVector = llvm::SmallVector<AST *>;
@@ -149,7 +155,31 @@ public:
   }
 };
 
-// Declaration class represents a variable declaration with an initializer in the AST
+class DeclarationChar : public Program
+{
+  using VarVector = llvm::SmallVector<llvm::StringRef>;
+  using ValueVector = llvm::SmallVector<Expr *>;
+  VarVector Vars;      // Stores the list of variables
+  ValueVector Values;  // Stores the list of initializers
+
+public:
+  // Declaration(llvm::SmallVector<llvm::StringRef> Vars, Expr *E) : Vars(Vars), E(E) {}
+  DeclarationChar(llvm::SmallVector<llvm::StringRef> Vars, llvm::SmallVector<Expr *> Values) : Vars(Vars), Values(Values) {}
+
+  VarVector::const_iterator varBegin() { return Vars.begin(); }
+
+  VarVector::const_iterator varEnd() { return Vars.end(); }
+
+  ValueVector::const_iterator valBegin() { return Values.begin(); }
+
+  ValueVector::const_iterator valEnd() { return Values.end(); }
+
+  virtual void accept(ASTVisitor &V) override
+  {
+    V.visit(*this);
+  }
+};
+
 class DeclarationBool : public Program
 {
   using VarVector = llvm::SmallVector<llvm::StringRef>;
@@ -184,7 +214,8 @@ public:
   {
     Ident,
     Number,
-    Float
+    Float,
+    Char
   };
 
 private:

@@ -18,6 +18,7 @@ public:
         ident,          // identifier
         number,         // integer and float literal
         float_num,
+        character,
         assign,         // =
         minus_assign,   // -=
         plus_assign,    // +=
