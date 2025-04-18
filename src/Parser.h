@@ -46,11 +46,13 @@ class Parser
     DeclarationFloat *parseFloatDec();
     DeclarationChar *parseCharDec();
     DeclarationBool *parseBoolDec();
+    DeclarationString *parseStringDec();
     // assignments
     Assignment *parseBoolAssign();
     Assignment *parseIntAssign();
     Assignment *parseCharAssign();
     Assignment *parseFloatAssign();
+    Assignment *parseStringAssign();
     // unary
     UnaryOp *parseUnary();
     // expressions

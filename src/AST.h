@@ -11,6 +11,7 @@ class Program;
 class DeclarationInt;
 class DeclarationFloat;
 class DeclarationChar;
+class DeclarationString;
 class DeclarationBool;
 class Final;
 class BinaryOp;
@@ -53,6 +54,7 @@ public:
   virtual void visit(PrintStmt &) = 0;
   virtual void visit(DeclarationFloat &) = 0; // Visit the float variable declaration node
   virtual void visit(DeclarationChar &) = 0; //Visit the char variable  declerations
+  virtual void visit(DeclarationString &) = 0; //Visit the String variable  declerations
 };
 
 // AST class serves as the base class for all AST nodes
@@ -180,6 +182,31 @@ public:
   }
 };
 
+class DeclarationString : public Program
+{
+  using VarVector = llvm::SmallVector<llvm::StringRef>;
+  using ValueVector = llvm::SmallVector<Expr *>;
+  VarVector Vars;      // Stores the list of variables
+  ValueVector Values;  // Stores the list of initializers
+
+public:
+  // Declaration(llvm::SmallVector<llvm::StringRef> Vars, Expr *E) : Vars(Vars), E(E) {}
+  DeclarationString(llvm::SmallVector<llvm::StringRef> Vars, llvm::SmallVector<Expr *> Values) : Vars(Vars), Values(Values) {}
+
+  VarVector::const_iterator varBegin() { return Vars.begin(); }
+
+  VarVector::const_iterator varEnd() { return Vars.end(); }
+
+  ValueVector::const_iterator valBegin() { return Values.begin(); }
+
+  ValueVector::const_iterator valEnd() { return Values.end(); }
+
+  virtual void accept(ASTVisitor &V) override
+  {
+    V.visit(*this);
+  }
+};
+
 class DeclarationBool : public Program
 {
   using VarVector = llvm::SmallVector<llvm::StringRef>;
@@ -215,7 +242,8 @@ public:
     Ident,
     Number,
     Float,
-    Char
+    Char,
+    String,
   };
 
 private:

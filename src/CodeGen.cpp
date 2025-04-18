@@ -28,8 +28,13 @@ ns{
     Type *FloatTy; //for float
     Constant *FloatZero; //defalut  zero for float
     Constant *Int8Zero;  // Default zero value for chars
+    // Add string type constants
+    Constant *EmptyString;
+    
+
 
     Value *V;
+    StringMap<AllocaInst *> nameMapString;
     StringMap<AllocaInst *> nameMapInt;
     StringMap<AllocaInst *> nameMapBool;
     StringMap<AllocaInst *> nameMapFloat;
@@ -45,7 +50,10 @@ ns{
     Function *PrintFloatFn;      
     // chhar print
     FunctionType *PrintCharFnTy;
-    Function *PrintCharFn; 
+    Function *PrintCharFn;
+    // string print
+    FunctionType *PrintStringFnTy;
+    Function *PrintStringFn; 
 
   public:
     // Constructor for the visitor class.
@@ -69,6 +77,8 @@ ns{
       Int8Ty = Type::getInt8Ty(M->getContext());
       Int8Zero = ConstantInt::get(Int8Ty, 0, true);
 
+      EmptyString = ConstantPointerNull::get(Type::getInt8PtrTy(M->getContext())); // for getting the string's default
+
       
       // Create a function declaration for the "compiler_write" function.
       PrintIntFnTy = FunctionType::get(VoidTy, {Int32Ty}, false);
@@ -83,6 +93,9 @@ ns{
       // Create a function declaration for the "compiler_write" function.
       PrintCharFnTy = FunctionType::get(VoidTy, {Int8Ty}, false);
       PrintCharFn = Function::Create(PrintCharFnTy, GlobalValue::ExternalLinkage, "print_char", M);
+      // Create a function declaration for the "compiler_write" function.
+      PrintStringFnTy = FunctionType::get(VoidTy, {Int8PtrTy}, false);
+      PrintStringFn = Function::Create(PrintStringFnTy, GlobalValue::ExternalLinkage, "print_string", M);
     }
 
     // Entry point for generating LLVM IR from the AST.
@@ -232,32 +245,60 @@ ns{
     };
     
     virtual void visit(DeclarationChar &Node) override {
-    llvm::SmallVector<Value *, 8> vals;
+        llvm::SmallVector<Value *, 8> vals;
 
-    llvm::SmallVector<Expr *, 8>::const_iterator E = Node.valBegin();
-    for (llvm::SmallVector<llvm::StringRef, 8>::const_iterator Var = Node.varBegin(), End = Node.varEnd(); Var != End; ++Var) {
-        if (E < Node.valEnd() && *E != nullptr) {
-            (*E)->accept(*this);
-            vals.push_back(V);
-        } else {
-            vals.push_back(nullptr);
+        llvm::SmallVector<Expr *, 8>::const_iterator E = Node.valBegin();
+        for (llvm::SmallVector<llvm::StringRef, 8>::const_iterator Var = Node.varBegin(), End = Node.varEnd(); Var != End; ++Var) {
+            if (E < Node.valEnd() && *E != nullptr) {
+                (*E)->accept(*this);
+                vals.push_back(V);
+            } else {
+                vals.push_back(nullptr);
+            }
+            E++;
         }
-        E++;
-    }
 
-    llvm::SmallVector<Value *, 8>::const_iterator itVal = vals.begin();
-    for (llvm::SmallVector<llvm::StringRef, 8>::const_iterator S = Node.varBegin(), End = Node.varEnd(); S != End; ++S) {
-        StringRef Var = *S;
-        nameMapChar[Var] = Builder.CreateAlloca(Int8Ty);
-        
-        if (*itVal != nullptr) {
-            Builder.CreateStore(*itVal, nameMapChar[Var]);
-        } else {
-            Builder.CreateStore(Int8Zero, nameMapChar[Var]);
+        llvm::SmallVector<Value *, 8>::const_iterator itVal = vals.begin();
+        for (llvm::SmallVector<llvm::StringRef, 8>::const_iterator S = Node.varBegin(), End = Node.varEnd(); S != End; ++S) {
+            StringRef Var = *S;
+            nameMapChar[Var] = Builder.CreateAlloca(Int8Ty);
+            
+            if (*itVal != nullptr) {
+                Builder.CreateStore(*itVal, nameMapChar[Var]);
+            } else {
+                Builder.CreateStore(Int8Zero, nameMapChar[Var]);
+            }
+            itVal++;
         }
-        itVal++;
     }
-}
+    
+    virtual void visit(DeclarationString &Node) override {
+      llvm::SmallVector<Value *, 8> vals;
+      // Process initial values
+      auto E = Node.valBegin();
+      for (auto Var = Node.varBegin(), End = Node.varEnd(); Var != End; ++Var) {
+          if (E < Node.valEnd() && *E != nullptr) {
+              (*E)->accept(*this);
+              vals.push_back(V);
+          } else {
+              vals.push_back(EmptyString);
+          }
+          E++;
+      }
+
+      // Allocate and store strings
+      auto itVal = vals.begin();
+      for (auto S = Node.varBegin(), End = Node.varEnd(); S != End; ++S) {
+          StringRef Var = *S;
+          
+          // Allocate space for a string pointer
+          AllocaInst *Alloca = Builder.CreateAlloca(Type::getInt8PtrTy(M->getContext()));
+          nameMapString[Var] = Alloca;
+          
+          Builder.CreateStore(*itVal, Alloca);
+          itVal++;
+      }
+    }
 
     virtual void visit(Assignment &Node) override
     {
@@ -294,12 +335,22 @@ ns{
       // Create a store instruction to assign the value to the variable.
       if (isBool(((Final*)Node.getLeft())->getVal()))
         Builder.CreateStore(val, nameMapBool[varName]);
-      else
-        Builder.CreateStore(val, nameMapInt[varName]);
+      else if (nameMapString.count(varName)) {
+        if (Node.getAssignKind() != Assignment::Assign) {
+            llvm::report_fatal_error("Compound assignment not supported for strings");
+        }
+        Builder.CreateStore(val, nameMapString[varName]);
+        return;
+      }else if(nameMapInt.count(varName)){
+          Builder.CreateStore(val, nameMapInt[varName]);
+      }else if(nameMapChar.count(varName)){
+          Builder.CreateStore(val, nameMapChar[varName]);
+      }else if(nameMapFloat.count(varName)){
+          Builder.CreateStore(val, nameMapFloat[varName]);
+      }
 
     };
 
-    // the final and others 
     virtual void visit(Final &Node) override {
       StringRef val = Node.getVal();
 
@@ -313,8 +364,11 @@ ns{
               V = Builder.CreateLoad(FloatTy, nameMapFloat[val]);
           else if (nameMapChar.count(val))
             V = Builder.CreateLoad(Int8Ty, nameMapChar[val]);
-          else
-              llvm::report_fatal_error("Undefined variable: " + val);
+          else if (nameMapString.count(val)) {
+            V = Builder.CreateLoad(Int8PtrTy, nameMapString[val]);
+            return;
+          }else
+                llvm::report_fatal_error("Undefined variable: " + val);
       } else {
           // If it's a literal, check the kind and generate the appropriate constant
           if (Node.getKind() == Final::Float) {
@@ -330,12 +384,21 @@ ns{
             char charVal;  // Simple case - may need more complex parsing
             val.getAsInteger(10,charVal);
             V = ConstantInt::get(Int8Ty, charVal); 
+          }else if (Node.getKind() == Final::String) {
+            // Ensure string is properly null-terminated
+            std::string str = val.str();
+            if (!str.empty() && str.back() != '\0') {
+                str += '\0';
+            }
+            V = Builder.CreateGlobalStringPtr(str);
+            return;
           }else {
-              llvm::report_fatal_error("Unknown literal kind");
+            llvm::report_fatal_error("Unknown literal kind");
           }
       }
     };
 
+    // the others 
     virtual void visit(BinaryOp &Node) override
     {
       // Visit the left-hand side of the binary operation and get its value.
@@ -547,7 +610,10 @@ ns{
       else if (nameMapChar.count(Node.getVar())) {
           V = Builder.CreateLoad(Int8Ty, nameMapChar[Node.getVar()]);
           CallInst *Call = Builder.CreateCall(PrintCharFnTy, PrintCharFn, {V});
-      }  
+      }else if (nameMapString.count(Node.getVar())) {
+          V = Builder.CreateLoad(Int8PtrTy, nameMapString[Node.getVar()]);
+          CallInst *Call = Builder.CreateCall(PrintStringFnTy, PrintStringFn, {V});
+      } 
     };
 
     virtual void visit(WhileStmt &Node) override

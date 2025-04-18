@@ -1,1 +1,1 @@
-float a = 10.03;
+string a = "ali";

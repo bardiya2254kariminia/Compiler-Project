@@ -111,6 +111,54 @@ void Lexer::next(Token &token) {
             formToken(token, end, Token::unknown);
         }
         return;
+    }else if (*BufferPtr == '"') {
+        // const char *start = BufferPtr + 1; // Skip opening quote
+        // const char *end = start;
+        
+        // // Scan until closing quote
+        // while (*end && *end != '"') {
+        //     // Handle escape sequences
+        //     if (*end == '\\') {
+        //         end++; // Skip the backslash
+        //         if (!*end) break; // Handle unexpected EOF
+        //     }
+        //     end++;
+        // }
+        
+        // if (*end != '"') {
+        //     // Unterminated string
+        //     formToken(token, end, Token::unknown);
+        //     return;
+        // }
+        
+        // // Create the token (include quotes in text for now)
+        // formToken(token, end + 1, Token::string);
+        // return;
+        const char *start = BufferPtr + 1; // Skip opening quote
+        const char *end = start;
+        
+        // Scan until closing quote
+        while (*end && *end != '"') {
+            // Handle escape sequences
+            if (*end == '\\') {
+                end++; // Skip the backslash
+                if (!*end) break; // Handle unexpected EOF
+            }
+            end++;
+        }
+        
+        if (*end != '"') {
+            // Unterminated string
+            formToken(token, end, Token::unknown);
+            return;
+        }
+        
+        // Create the token with just the content (between quotes)
+        // Note: We use start as beginning and calculate length to end (before closing quote)
+        token.Kind = Token::string;
+        token.Text = llvm::StringRef(start, end - start); // This excludes the quotes
+        BufferPtr = end + 1; // Advance past closing quote
+        return;
     }else if (charinfo::isDigit(*BufferPtr)) {
         const char *end = BufferPtr + 1;
         while (charinfo::isDigit(*end)) ++end;

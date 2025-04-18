@@ -19,6 +19,7 @@ public:
         number,         // integer and float literal
         float_num,
         character,
+        string,
         assign,         // =
         minus_assign,   // -=
         plus_assign,    // +=
