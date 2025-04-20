@@ -355,6 +355,22 @@ ns{
         Node.getRightExpr()->accept(*this);
 
       Value *val = V;
+      // Handle array assignment
+      if (ArrayAccess *AA = dynamic_cast<ArrayAccess*>(Node.getLeft())) {
+        AA->accept(*this);  // This sets V to the element pointer
+        Value *elementPtr = V;
+        
+        // Evaluate the right-hand side
+        if (Node.getRightExpr()) {
+            Node.getRightExpr()->accept(*this);
+            Builder.CreateStore(V, elementPtr);
+        } else if (Node.getRightLogic()) {
+            Node.getRightLogic()->accept(*this);
+            Builder.CreateStore(V, elementPtr);
+        }
+        return;
+    }
+
 
       switch (Node.getAssignKind())
       {
@@ -788,6 +804,23 @@ ns{
             (*I)->accept(*this);
         }
     };
+  
+    virtual void visit(ArrayAccess &Node) override {
+        // Get the array pointer
+        Value *arrayPtr = nameMapArray[Node.getArrayName()];
+        
+        // Evaluate the index expression
+        Node.getIndex()->accept(*this);
+        Value *index = V;
+        
+        // Get element pointer
+        Value *indices[] = {
+            ConstantInt::get(Int32Ty, 0),  // First dimension (always 0)
+            index                          // Element index
+        };
+        V = Builder.CreateInBoundsGEP(arrayType, arrayPtr, indices);
+    }
+
   };
 }; // namespace
 

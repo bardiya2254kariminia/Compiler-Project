@@ -28,6 +28,7 @@ class WhileStmt;
 class elifStmt;
 class ForStmt;
 class PrintStmt;
+class ArrayAccess;
 
 // ASTVisitor class defines a visitor pattern to traverse the AST
 class ASTVisitor
@@ -625,6 +626,22 @@ public:
   {
     V.visit(*this);
   }
+};
+
+class ArrayAccess : public Expr {
+    llvm::StringRef ArrayName;
+    Expr *Index;
+    
+public:
+    ArrayAccess(llvm::StringRef Name, Expr *Idx) 
+        : ArrayName(Name), Index(Idx) {}
+    
+    llvm::StringRef getArrayName() { return ArrayName; }
+    Expr *getIndex() { return Index; }
+    
+    virtual void accept(ASTVisitor &V) override {
+        V.visit(*this);
+    }
 };
 
 #endif

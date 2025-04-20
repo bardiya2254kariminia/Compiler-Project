@@ -536,6 +536,16 @@ public:
   virtual void visit(SignedNumber &Node) override {
   };
 
+  virtual void visit(ArrayAccess &Node) override {
+      // Check array exists
+      if (ArrayScope.find(Node.getArrayName()) == ArrayScope.end()) {
+          error(Not, Node.getArrayName());
+      }
+      
+      // Check index is valid (integer)
+      Node.getIndex()->accept(*this);
+      // Could add bounds checking here if desired
+  }
 };
 }
 

@@ -968,6 +968,25 @@ _error:
 Expr *Parser::parseFactor()
 {
     Expr *Left = parseFinal();
+
+    if (Tok.is(Token::ident)) {
+        llvm::StringRef name = Tok.getText();
+        advance();
+        
+        if (Tok.is(Token::l_bracket)) {
+            advance();
+            Expr *index = parseExpr();
+            if (!index) goto _error;
+            
+            if (!consume(Token::r_bracket)) {
+                goto _error;
+            }
+            
+            return new ArrayAccess(name, index);
+        }
+        // [Rest of existing ident handling...]
+    }
+    
     if (Left == nullptr)
     {
         goto _error;
