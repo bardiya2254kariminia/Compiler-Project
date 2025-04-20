@@ -39,6 +39,8 @@ ns{
     StringMap<AllocaInst *> nameMapBool;
     StringMap<AllocaInst *> nameMapFloat;
     StringMap<AllocaInst *> nameMapChar;
+    StringMap<Value *> nameMapArray; // New map for array variables
+
     // int print
     FunctionType *PrintIntFnTy;
     Function *PrintIntFn;
@@ -54,6 +56,9 @@ ns{
     // string print
     FunctionType *PrintStringFnTy;
     Function *PrintStringFn; 
+    // Array-related types
+    Type *ArrayTy;
+    Type *ArrayPtrTy;
 
   public:
     // Constructor for the visitor class.
@@ -79,7 +84,10 @@ ns{
 
       EmptyString = ConstantPointerNull::get(Type::getInt8PtrTy(M->getContext())); // for getting the string's default
 
-      
+      // Initialize array types
+      ArrayTy = ArrayType::get(Int32Ty, 0); // Initially zero-length, will resize per array
+      ArrayPtrTy = ArrayTy->getPointerTo();
+
       // Create a function declaration for the "compiler_write" function.
       PrintIntFnTy = FunctionType::get(VoidTy, {Int32Ty}, false);
       PrintIntFn = Function::Create(PrintIntFnTy, GlobalValue::ExternalLinkage, "print_int", M);
@@ -300,6 +308,40 @@ ns{
       }
     }
 
+    virtual void visit(DeclarationArray &Node) override {
+        // First determine the array size from the number of elements
+        size_t arraySize = std::distance(Node.valBegin(), Node.valEnd());
+        
+        // Create array type with the correct size
+        ArrayType *arrayType = ArrayType::get(Int32Ty, arraySize);
+        
+        // Process each variable in the declaration
+        for (auto Var = Node.varBegin(), End = Node.varEnd(); Var != End; ++Var) {
+            // Allocate memory for the array
+            AllocaInst *arrayAlloca = Builder.CreateAlloca(arrayType);
+            nameMapArray[*Var] = arrayAlloca;
+            
+            // Initialize each element
+            unsigned index = 0;
+            for (auto E = Node.valBegin(); E != Node.valEnd(); ++E, ++index) {
+                if (*E != nullptr) {
+                    (*E)->accept(*this); // Generate code for the element expression
+                    
+                    // Get pointer to array element
+                    Value *indexList[] = {
+                        ConstantInt::get(Int32Ty, 0),        // First dimension (always 0)
+                        ConstantInt::get(Int32Ty, index)     // Element index
+                    };
+                    Value *elementPtr = Builder.CreateInBoundsGEP(
+                        arrayType, arrayAlloca, indexList);
+                    
+                    // Store the value
+                    Builder.CreateStore(V, elementPtr);
+                }
+            }
+        }
+    }
+
     virtual void visit(Assignment &Node) override
     {
       // Get the name of the variable being assigned.
@@ -347,6 +389,8 @@ ns{
           Builder.CreateStore(val, nameMapChar[varName]);
       }else if(nameMapFloat.count(varName)){
           Builder.CreateStore(val, nameMapFloat[varName]);
+      }else if (nameMapArray.count(varName)) {
+          llvm::report_fatal_error("Direct assignment to array variables not supported. Use element-wise assignment.");
       }
 
     };
@@ -367,8 +411,12 @@ ns{
           else if (nameMapString.count(val)) {
             V = Builder.CreateLoad(Int8PtrTy, nameMapString[val]);
             return;
-          }else
-                llvm::report_fatal_error("Undefined variable: " + val);
+          }else if (nameMapArray.count(val)) {
+                // For now, just return the array pointer
+                V = nameMapArray[val];
+          }else 
+              llvm::report_fatal_error("Undefined variable: " + val);
+          
       } else {
           // If it's a literal, check the kind and generate the appropriate constant
           if (Node.getKind() == Final::Float) {

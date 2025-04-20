@@ -23,7 +23,7 @@ namespace charinfo
 
     LLVM_READNONE inline bool isSpecialCharacter(char c)
     {
-        return c == '=' || c == '+' || c == '-' || c == '*' || c == '/' || c == '!' || c == '>' || c == '<' || c == '(' || c == ')' || c == '{' || c == '}'|| c == ',' || c == ';' || c == '%' || c == '^';
+        return c == '[' || c == ']' || c == '=' || c == '+' || c == '-' || c == '*' || c == '/' || c == '!' || c == '>' || c == '<' || c == '(' || c == ')' || c == '{' || c == '}'|| c == ',' || c == ';' || c == '%' || c == '^';
     }
     LLVM_READNONE inline bool isDot(char c) {
         return c == '.';
@@ -112,28 +112,6 @@ void Lexer::next(Token &token) {
         }
         return;
     }else if (*BufferPtr == '"') {
-        // const char *start = BufferPtr + 1; // Skip opening quote
-        // const char *end = start;
-        
-        // // Scan until closing quote
-        // while (*end && *end != '"') {
-        //     // Handle escape sequences
-        //     if (*end == '\\') {
-        //         end++; // Skip the backslash
-        //         if (!*end) break; // Handle unexpected EOF
-        //     }
-        //     end++;
-        // }
-        
-        // if (*end != '"') {
-        //     // Unterminated string
-        //     formToken(token, end, Token::unknown);
-        //     return;
-        // }
-        
-        // // Create the token (include quotes in text for now)
-        // formToken(token, end + 1, Token::string);
-        // return;
         const char *start = BufferPtr + 1; // Skip opening quote
         const char *end = start;
         
@@ -297,6 +275,15 @@ void Lexer::next(Token &token) {
             kind = Token::exp;
             isFound = true;
             end = endWithOneLetter;
+        } else if (*BufferPtr == '[') {
+            kind = Token::l_bracket;
+            isFound = true;
+            end = endWithOneLetter;
+        } 
+        else if (*BufferPtr == ']') {
+            kind = Token::r_bracket;
+            isFound = true;
+            end = endWithOneLetter;
         }
         
         // generate the token
@@ -305,7 +292,10 @@ void Lexer::next(Token &token) {
             formToken(token, end, kind);
         else formToken(token, BufferPtr + 1, Token::unknown);
         return;
-    } else {
+    }
+    
+    
+     else {
         formToken(token, BufferPtr + 1, Token::unknown); 
         return;         
     }

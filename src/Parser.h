@@ -47,12 +47,15 @@ class Parser
     DeclarationChar *parseCharDec();
     DeclarationBool *parseBoolDec();
     DeclarationString *parseStringDec();
+    DeclarationArray* parseArrayDec();
+    llvm::SmallVector<Expr*> parseArrayElements();
     // assignments
     Assignment *parseBoolAssign();
     Assignment *parseIntAssign();
     Assignment *parseCharAssign();
     Assignment *parseFloatAssign();
     Assignment *parseStringAssign();
+    
     // unary
     UnaryOp *parseUnary();
     // expressions

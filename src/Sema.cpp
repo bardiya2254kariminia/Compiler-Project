@@ -10,6 +10,7 @@ class InputCheck : public ASTVisitor {
   llvm::StringSet<> FloatScope; // StringSet to store declared int variables
   llvm::StringSet<> CharScope; // StringSet to store declared int variables
   llvm::StringSet<> StringScope; // StringSet to store declared int variables
+  llvm::StringSet<> ArrayScope; // StringSet to store declared int variables
 
   bool HasError; // Flag to indicate if an error occurred
 
@@ -45,8 +46,14 @@ public:
   virtual void visit(Final &Node) override {
     if (Node.getKind() == Final::Ident) {
       // Check if identifier is in the scope
-      if (IntScope.find(Node.getVal()) == IntScope.end() && BoolScope.find(Node.getVal()) == BoolScope.end() && FloatScope.find(Node.getVal()) == FloatScope.end())
+      if (IntScope.find(Node.getVal()) == IntScope.end() && 
+          BoolScope.find(Node.getVal()) == BoolScope.end() && 
+          FloatScope.find(Node.getVal()) == FloatScope.end() &&
+          CharScope.find(Node.getVal()) == CharScope.end() &&
+          StringScope.find(Node.getVal()) == StringScope.end() &&
+          ArrayScope.find(Node.getVal()) == ArrayScope.end()) {
         error(Not, Node.getVal());
+      }
     }
   };
 
@@ -247,6 +254,10 @@ public:
         llvm::errs() << "you should assign an integer value to an integer variable: " << dest->getVal() << "\n";
         HasError = true;
       }
+    }else if (ArrayScope.find(dest->getVal()) != ArrayScope.end()) {
+      llvm::errs() << "Cannot directly assign to array variable " << dest->getVal() 
+                   << ", use array indexing\n";
+      HasError = true;
     }
     
     
@@ -375,6 +386,28 @@ public:
       }
     }
     
+  };
+
+  virtual void visit(DeclarationArray &Node) override {
+    // Check all elements in the array
+    for (auto I = Node.valBegin(), E = Node.valEnd(); I != E; ++I) {
+      (*I)->accept(*this);
+    }
+    
+    // Add array variables to the ArrayScope
+    for (auto I = Node.varBegin(), E = Node.varEnd(); I != E; ++I) {
+      if (IntScope.find(*I) != IntScope.end() ||
+          BoolScope.find(*I) != BoolScope.end() ||
+          FloatScope.find(*I) != FloatScope.end() ||
+          CharScope.find(*I) != CharScope.end() ||
+          StringScope.find(*I) != StringScope.end()) {
+        llvm::errs() << "Variable " << *I << " is already declared as another type\n";
+        HasError = true;
+      } else {
+        if (!ArrayScope.insert(*I).second)
+          error(Twice, *I);
+      }
+    }
   };
 
 

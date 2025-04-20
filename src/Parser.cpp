@@ -25,6 +25,14 @@ Program *Parser::parseProgram(){
                 
             break;
         }
+        case Token::KW_array: {
+            DeclarationArray *arr = parseArrayDec();
+            if (arr)
+                data.push_back(arr);
+            else
+                goto _error;
+            break;
+        }
         case Token::KW_string: {
             DeclarationString *d;
             d = parseStringDec();
@@ -184,6 +192,100 @@ _error:
 }
 
 // declarations
+DeclarationArray* Parser::parseArrayDec() {
+    // Initialize variables at the start
+    llvm::StringRef varName;
+    llvm::SmallVector<Expr*> elements;
+    llvm::SmallVector<llvm::StringRef> varNames;
+    
+    // Parse array keyword
+    if (expect(Token::KW_array)) {
+        while (Tok.getKind() != Token::eoi)
+            advance();
+        return nullptr;
+    }
+    advance();
+    
+    // Parse identifier
+    if (expect(Token::ident)) {
+        while (Tok.getKind() != Token::eoi)
+            advance();
+        return nullptr;
+    }
+    varName = Tok.getText();
+    advance();
+    
+    // Parse assignment
+    if (expect(Token::assign)) {
+        while (Tok.getKind() != Token::eoi)
+            advance();
+        return nullptr;
+    }
+    advance();
+    
+    // Parse left bracket
+    if (expect(Token::l_bracket)) {
+        while (Tok.getKind() != Token::eoi)
+            advance();
+        return nullptr;
+    }
+    advance();
+    
+    // Parse array elements
+    elements = parseArrayElements();
+    
+    // Parse right bracket
+    if (expect(Token::r_bracket)) {
+        while (Tok.getKind() != Token::eoi)
+            advance();
+        return nullptr;
+    }
+    advance();
+    
+    // Parse semicolon
+    if (expect(Token::semicolon)) {
+        while (Tok.getKind() != Token::eoi)
+            advance();
+        return nullptr;
+    }
+    
+    // Add variable name to vector
+    varNames.push_back(varName);
+    
+    return new DeclarationArray(varNames, elements);
+}
+
+llvm::SmallVector<Expr*> Parser::parseArrayElements() {
+    llvm::SmallVector<Expr*> elements;
+    
+    // Handle empty array case
+    if (Tok.is(Token::r_bracket))
+        return elements;
+    
+    // Parse first element
+    Expr* elem = parseExpr();
+    if (!elem)
+        goto _error;
+    elements.push_back(elem);
+    
+    // Parse remaining elements
+    while (Tok.is(Token::comma)) {
+        advance();
+        
+        elem = parseExpr();
+        if (!elem)
+            goto _error;
+        elements.push_back(elem);
+    }
+    
+    return elements;
+
+_error:
+    while (Tok.getKind() != Token::eoi)
+        advance();
+    return llvm::SmallVector<Expr*>();
+}
+
 DeclarationFloat *Parser::parseFloatDec()
 {
     Expr *E = nullptr;

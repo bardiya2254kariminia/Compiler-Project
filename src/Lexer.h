@@ -48,6 +48,8 @@ public:
         r_paren,        // )
         l_brace,        // {
         r_brace,        // }
+        l_bracket,      // [
+        r_bracket,      // ]
         ///////////////////////////////
         KW_int,         // int
         KW_float,       // float
