@@ -233,15 +233,25 @@ DeclarationArray* Parser::parseArrayDec() {
     
     // Parse array elements
     elements = parseArrayElements();
+    // for (auto e : elements) {
+    //      llvm::errs() <<
+    // }
+
     
     // Parse right bracket
+   
+
     if (expect(Token::r_bracket)) {
-        while (Tok.getKind() != Token::eoi)
+         llvm::errs() << Tok.getKind() << '\n';
+        while (Tok.getKind() != Token::eoi){
+             llvm::errs() << Tok.getKind() << '\n';
             advance();
+        }
         return nullptr;
     }
     advance();
-    
+     //  exit(0);
+   
     // Parse semicolon
     if (expect(Token::semicolon)) {
         while (Tok.getKind() != Token::eoi)
@@ -1006,6 +1016,16 @@ Expr *Parser::parseFinal(){
         advance();
         break;
     }
+    case Token::KW_true:{
+        Res = new Final(Final::Number, "1");
+        advance();
+        break;
+    }
+    case Token::KW_false:{
+        Res = new Final(Final::Number, "0");
+        advance();
+        break;
+    }
     case Token::float_num:{
         Res = new Final(Final::Float, Tok.getText());
         advance();
@@ -1077,7 +1097,7 @@ Expr *Parser::parseFinal(){
         
     }
     default:{
-        error();
+        // error();
         goto _error;
     }
     }

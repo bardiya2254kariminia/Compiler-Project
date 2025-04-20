@@ -50,14 +50,12 @@ public:
         r_brace,        // }
         l_bracket,      // [
         r_bracket,      // ]
-        ///////////////////////////////
         KW_int,         // int
         KW_float,       // float
         KW_boolean,     // boolean
         KW_string,      // string
         KW_char,        // char
         KW_array,       // array
-        ///////////////////////////////
         KW_true,        // true
         KW_false,       // false
         KW_if,          // if

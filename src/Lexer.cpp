@@ -82,22 +82,6 @@ void Lexer::next(Token &token) {
         // llvm::errs() <<Token[token] <<"\n";
         formToken(token, end, kind);
         return;
-    } else if (charinfo::isDigit(*BufferPtr)) { // check for numbers
-        const char *end = BufferPtr + 1;
-        while (charinfo::isDigit(*end)) {
-            ++end;
-            if(charinfo::isDot(*end)) {
-                ++end;
-                while (charinfo::isDigit(*end))
-                    ++end;
-                formToken(token, end, Token::float_num);
-                return;
-
-            }
-        }
-        formToken(token, end, Token::number);
-        return;
-        
     }else if (*BufferPtr == '\'') {  // Character literal
         const char *end = BufferPtr + 1;
         if (*end && *end != '\'') {
@@ -138,11 +122,15 @@ void Lexer::next(Token &token) {
         BufferPtr = end + 1; // Advance past closing quote
         return;
     }else if (charinfo::isDigit(*BufferPtr)) {
+    //   llvm::errs() << "an int was born\t" << *BufferPtr;  
         const char *end = BufferPtr + 1;
-        while (charinfo::isDigit(*end)) ++end;
-        
+        //    llvm::errs() << *end;
+        while (charinfo::isDigit(*end)) {++end;
+            // llvm::errs() << *end;
+        }
+        // llvm::errs() << '\n';
         // Check for float
-        if (*end == '.' && charinfo::isDigit(end[1])) {
+        if (*end == '.' && charinfo::isDigit(*(end + 1))) {
             ++end; // skip the dot
             while (charinfo::isDigit(*++end)) {}
             formToken(token, end, Token::float_num);
@@ -290,12 +278,16 @@ void Lexer::next(Token &token) {
 
         if (isFound) 
             formToken(token, end, kind);
-        else formToken(token, BufferPtr + 1, Token::unknown);
+        else {
+            llvm::errs() << "we did it bardia ! 1\t" << *end << '\n';
+             formToken(token, BufferPtr + 1, Token::unknown);
+        }
         return;
     }
     
     
      else {
+        llvm::errs() << "we did it bardia ! 2\t" << *(BufferPtr) << '\n';
         formToken(token, BufferPtr + 1, Token::unknown); 
         return;         
     }

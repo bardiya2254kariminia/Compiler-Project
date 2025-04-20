@@ -1,2 +1,2 @@
-array a =[1,2,3];
-a[1] = 1;
+int b = 5 + true;
+array a =[6.1, true, 4.1];

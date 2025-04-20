@@ -19,7 +19,10 @@ class Parser
 
     // retrieves the next token from the lexer.expect()
     // tests whether the look-ahead is of the expected kind
-    void advance() { Lex.next(Tok); }
+    void advance() { Lex.next(Tok);
+     llvm::errs() << Tok.getKind() + 16 << '\n';
+    }
+    
 
     bool expect(Token::TokenKind Kind)
     {
