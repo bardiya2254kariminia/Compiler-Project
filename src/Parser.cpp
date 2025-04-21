@@ -1217,6 +1217,7 @@ Logic *Parser::parseComparison()
     Expr *Right = nullptr;
     Token prev_Tok;
     const char* prev_buffer;
+
     if (Tok.is(Token::l_paren)) {
         advance();
         Res = parseLogic();
@@ -1239,46 +1240,70 @@ Logic *Parser::parseComparison()
             return Res;
         }
         else if(Tok.is(Token::ident)){
+            // Save the identifier
             Ident = new Final(Final::Ident, Tok.getText());
+            advance();
+            
+            // Check if this is a boolean variable comparison
+            if (Tok.isOneOf(Token::eq, Token::neq, Token::gt, Token::lt, Token::gte, Token::lte)) {
+                Comparison::Operator Op;
+                if (Tok.is(Token::eq))
+                    Op = Comparison::Equal;
+                else if (Tok.is(Token::neq))
+                    Op = Comparison::Not_equal;
+                else if (Tok.is(Token::gt))
+                    Op = Comparison::Greater;
+                else if (Tok.is(Token::lt))
+                    Op = Comparison::Less;
+                else if (Tok.is(Token::gte))
+                    Op = Comparison::Greater_equal;
+                else if (Tok.is(Token::lte))
+                    Op = Comparison::Less_equal;
+                advance();
+                
+                Right = parseExpr();
+                if (Right == nullptr) {
+                    goto _error;
+                }
+                Res = new Comparison(Ident, Right, Op);
+            } else {
+                // If no comparison operator, treat as boolean variable
+                Res = new Comparison(Ident, nullptr, Comparison::Ident);
+            }
+            return Res;
         }
+        
+        // Try to parse a regular comparison
         prev_Tok = Tok;
         prev_buffer = Lex.getBuffer();
         Left = parseExpr();
         if(Left == nullptr)
             goto _error;
         
-
         Comparison::Operator Op;
-            if (Tok.is(Token::eq))
-                Op = Comparison::Equal;
-            else if (Tok.is(Token::neq))
-                Op = Comparison::Not_equal;
-            else if (Tok.is(Token::gt))
-                Op = Comparison::Greater;
-            else if (Tok.is(Token::lt))
-                Op = Comparison::Less;
-            else if (Tok.is(Token::gte))
-                Op = Comparison::Greater_equal;
-            else if (Tok.is(Token::lte))
-                Op = Comparison::Less_equal;    
-            else {
-                if (Ident){
-                    Tok = prev_Tok;
-                    Lex.setBufferPtr(prev_buffer);
-                    Res = new Comparison(Ident, nullptr, Comparison::Ident);
-                    advance();
-                    return Res;
-                }
-                goto _error;
-            }
-            advance();
-            Right = parseExpr();
-            if (Right == nullptr)
-            {
-                goto _error;
-            }
-            
-            Res = new Comparison(Left, Right, Op);
+        if (Tok.is(Token::eq))
+            Op = Comparison::Equal;
+        else if (Tok.is(Token::neq))
+            Op = Comparison::Not_equal;
+        else if (Tok.is(Token::gt))
+            Op = Comparison::Greater;
+        else if (Tok.is(Token::lt))
+            Op = Comparison::Less;
+        else if (Tok.is(Token::gte))
+            Op = Comparison::Greater_equal;
+        else if (Tok.is(Token::lte))
+            Op = Comparison::Less_equal;    
+        else {
+            goto _error;
+        }
+        advance();
+        Right = parseExpr();
+        if (Right == nullptr)
+        {
+            goto _error;
+        }
+        
+        Res = new Comparison(Left, Right, Op);
     }
     
     return Res;
@@ -1669,7 +1694,60 @@ llvm::SmallVector<AST *> Parser::getBody()
     {
         switch (Tok.getKind())
         {
-        
+        case Token::KW_int: {
+            DeclarationInt *d;
+            d = parseIntDec();
+            if (d)
+                body.push_back(d);
+            else
+                goto _error;
+            break;
+        }
+        case Token::KW_float: {
+            DeclarationFloat *d;
+            d = parseFloatDec();
+            if (d)
+                body.push_back(d);
+            else
+                goto _error;
+            break;
+        }
+        case Token::KW_char: {
+            DeclarationChar *d;
+            d = parseCharDec();
+            if (d)
+                body.push_back(d);
+            else
+                goto _error;
+            break;
+        }
+        case Token::KW_string: {
+            DeclarationString *d;
+            d = parseStringDec();
+            if (d)
+                body.push_back(d);
+            else
+                goto _error;
+            break;
+        }
+        case Token::KW_boolean: {
+            DeclarationBool *d;
+            d = parseBoolDec();
+            if (d)
+                body.push_back(d);
+            else
+                goto _error;
+            break;
+        }
+        case Token::KW_array: {
+            DeclarationArray *d;
+            d = parseArrayDec();
+            if (d)
+                body.push_back(d);
+            else
+                goto _error;
+            break;
+        }
         case Token::ident:{
             Token prev_token = Tok;
             const char* prev_buffer = Lex.getBuffer();
@@ -1683,23 +1761,19 @@ llvm::SmallVector<AST *> Parser::getBody()
                     break;
                 }
                 else{
-
                     goto _error;
                 }
-                    
             }
             else
             {
                 if (u)
                 {
-
                     goto _error;
                 }
                 else{
                     Tok = prev_token;
                     Lex.setBufferPtr(prev_buffer);
                 }
-                    
             }
 
             
@@ -1801,13 +1875,11 @@ llvm::SmallVector<AST *> Parser::getBody()
         }
         default:{
             error();
-
             goto _error;
             break;
         }
         }
         advance();
-
     }
     if(Tok.is(Token::r_brace)){
         return body;
@@ -1817,5 +1889,4 @@ _error:
     while (Tok.getKind() != Token::eoi)
         advance();
     return body;
-
 }
