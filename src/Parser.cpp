@@ -1075,12 +1075,14 @@ Expr *Parser::parseFactor() {
     if (Tok.is(Token::KW_length)) {
         return parseLengthFunction();
     }
+    else if (Tok.is(Token::KW_index)) {
+        return parseIndexFunction();
+    }
     else if (Tok.is(Token::KW_min)) {
         return parseMinFunction();
     }else if (Tok.is(Token::KW_max)) {
         return parseMaxFunction();
     }
-
 
     Expr *Left = parseFinal();
     if (Left == nullptr) {
@@ -1315,6 +1317,48 @@ Expr* Parser::parseMaxFunction() {
     advance();
 
     return new MaxFunction(arrName);
+}
+
+Expr* Parser::parseIndexFunction() {
+    // Check for index keyword
+    if (!Tok.is(Token::KW_index)) {
+        return nullptr;
+    }
+    advance();
+
+    // Check for opening parenthesis
+    if (!Tok.is(Token::l_paren)) {
+        return nullptr;
+    }
+    advance();
+
+    // Check for array identifier
+    if (!Tok.is(Token::ident)) {
+        return nullptr;
+    }
+    llvm::StringRef arrName = Tok.getText();
+    advance();
+
+    // Check for comma
+    if (!Tok.is(Token::comma)) {
+        return nullptr;
+    }
+    advance();
+
+    // Parse the index expression
+    Expr* indexExpr = parseExpr();
+    if (!indexExpr) {
+        return nullptr;
+    }
+
+    // Check for closing parenthesis
+    if (!Tok.is(Token::r_paren)) {
+        return nullptr;
+    }
+    advance();
+
+    // Create an ArrayAccess node using the same implementation as a[i]
+    return new ArrayAccess(arrName, indexExpr);
 }
 
 // logic and comparisions

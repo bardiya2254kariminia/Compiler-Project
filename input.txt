@@ -1,2 +1,2 @@
 array c = [1, 2 , 3];
-int a = max(c) ;
+int a = index(c , 1) ;

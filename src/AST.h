@@ -293,6 +293,18 @@ public:
     void accept(ASTVisitor &V) override { V.visit(*this); }
 };
 
+class IndexFunction : public Expr {
+    llvm::StringRef ArrayName;
+    Expr* Index;
+public:
+    IndexFunction(llvm::StringRef name, Expr* index) 
+        : ArrayName(name), Index(index) {}
+    llvm::StringRef getArrayName() const { return ArrayName; }
+    Expr* getIndex() const { return Index; }
+    
+    void accept(ASTVisitor &V) override { V.visit(*this); }
+};
+
 class MinFunction : public Expr {
     llvm::StringRef ArrayName;
 public:
