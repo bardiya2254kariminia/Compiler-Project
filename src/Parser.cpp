@@ -1080,8 +1080,12 @@ Expr *Parser::parseFactor() {
     }
     else if (Tok.is(Token::KW_min)) {
         return parseMinFunction();
-    }else if (Tok.is(Token::KW_max)) {
+    }
+    else if (Tok.is(Token::KW_max)) {
         return parseMaxFunction();
+    }
+    else if (Tok.is(Token::KW_pow)) {
+        return parsePowFunction();
     }
 
     Expr *Left = parseFinal();
@@ -1359,6 +1363,47 @@ Expr* Parser::parseIndexFunction() {
 
     // Create an ArrayAccess node using the same implementation as a[i]
     return new ArrayAccess(arrName, indexExpr);
+}
+
+Expr* Parser::parsePowFunction() {
+    // Check for pow keyword
+    if (!Tok.is(Token::KW_pow)) {
+        return nullptr;
+    }
+    advance();
+
+    // Check for opening parenthesis
+    if (!Tok.is(Token::l_paren)) {
+        return nullptr;
+    }
+    advance();
+
+    // Parse the base expression
+    Expr* baseExpr = parseExpr();
+    if (!baseExpr) {
+        return nullptr;
+    }
+
+    // Check for comma
+    if (!Tok.is(Token::comma)) {
+        return nullptr;
+    }
+    advance();
+
+    // Parse the exponent expression
+    Expr* expExpr = parseExpr();
+    if (!expExpr) {
+        return nullptr;
+    }
+
+    // Check for closing parenthesis
+    if (!Tok.is(Token::r_paren)) {
+        return nullptr;
+    }
+    advance();
+
+    // Create a BinaryOp with Exp operator, reusing the existing ^ implementation
+    return new BinaryOp(BinaryOp::Exp, baseExpr, expExpr);
 }
 
 // logic and comparisions

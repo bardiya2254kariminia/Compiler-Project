@@ -68,7 +68,8 @@ public:
         KW_length,        // length of an array
         KW_min,  // min keyword
         KW_max,  // max keyword
-        KW_index  // index function
+        KW_index,  // index function
+        KW_pow  // power function
     };
 
 private:

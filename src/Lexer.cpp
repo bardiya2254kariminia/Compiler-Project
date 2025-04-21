@@ -84,6 +84,8 @@ void Lexer::next(Token &token) {
             kind = Token::KW_max;
         else if (Name == "index")
             kind = Token::KW_index;
+        else if (Name == "pow")
+            kind = Token::KW_pow;
         else
             kind = Token::ident;
         // generate the token

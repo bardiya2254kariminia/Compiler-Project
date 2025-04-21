@@ -293,6 +293,15 @@ public:
     void accept(ASTVisitor &V) override { V.visit(*this); }
 };
 
+class AbsFunction : public Expr {
+    Expr* Value;
+public:
+    AbsFunction(Expr* value) : Value(value) {}
+    Expr* getValue() const { return Value; }
+    
+    void accept(ASTVisitor &V) override { V.visit(*this); }
+};
+
 class IndexFunction : public Expr {
     llvm::StringRef ArrayName;
     Expr* Index;
