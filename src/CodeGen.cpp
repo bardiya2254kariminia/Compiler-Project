@@ -384,6 +384,56 @@ ns{
         V = ElementPtr;
     };
 
+    virtual void visit(MinFunction &Node) override {
+        auto arrayEntry = nameMapArray[Node.getArrayName()];
+        Value *ArrayPtr = arrayEntry.first;
+        size_t ArraySize = arrayEntry.second;
+
+        // Create loop to find minimum
+        BasicBlock *PreBB = Builder.GetInsertBlock();
+        BasicBlock *CondBB = BasicBlock::Create(M->getContext(), "min.cond", PreBB->getParent());
+        BasicBlock *BodyBB = BasicBlock::Create(M->getContext(), "min.body", PreBB->getParent());
+        BasicBlock *ExitBB = BasicBlock::Create(M->getContext(), "min.exit", PreBB->getParent());
+
+        // Initialize variables
+        AllocaInst *MinVal = Builder.CreateAlloca(Int32Ty);
+        AllocaInst *Index = Builder.CreateAlloca(Int32Ty);
+        Builder.CreateStore(ConstantInt::get(Int32Ty, INT_MAX), MinVal);
+        Builder.CreateStore(ConstantInt::get(Int32Ty, 0), Index);
+
+        Builder.CreateBr(CondBB);
+
+        // Condition block
+        Builder.SetInsertPoint(CondBB);
+        Value *Idx = Builder.CreateLoad(Index);
+        Value *LoopCond = Builder.CreateICmpSLT(Idx, ConstantInt::get(Int32Ty, ArraySize));
+        Builder.CreateCondBr(LoopCond, BodyBB, ExitBB);
+
+        // Body block
+        Builder.SetInsertPoint(BodyBB);
+        // Load current element
+        Value *GEP = Builder.CreateInBoundsGEP(
+            ArrayPtr->getType()->getPointerElementType(),
+            ArrayPtr,
+            {ConstantInt::get(Int32Ty, 0), Idx}
+        );
+        Value *Current = Builder.CreateLoad(GEP);
+        
+        // Compare with min
+        Value *CurMin = Builder.CreateLoad(MinVal);
+        Value *IsSmaller = Builder.CreateICmpSLT(Current, CurMin);
+        Value *NewMin = Builder.CreateSelect(IsSmaller, Current, CurMin);
+        Builder.CreateStore(NewMin, MinVal);
+        
+        // Increment index
+        Value *NextIdx = Builder.CreateAdd(Idx, ConstantInt::get(Int32Ty, 1));
+        Builder.CreateStore(NextIdx, Index);
+        Builder.CreateBr(CondBB);
+
+        // Exit block
+        Builder.SetInsertPoint(ExitBB);
+        V = Builder.CreateLoad(MinVal);
+    }
 
     virtual void visit(Assignment &Node) override
     {

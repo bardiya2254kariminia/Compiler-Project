@@ -16,6 +16,7 @@ class DeclarationBool;
 class DeclarationArray;
 class LengthFunction;
 class ArrayAccess;
+class MinFunction;
 class Final;
 class BinaryOp;
 class UnaryOp;
@@ -61,6 +62,7 @@ public:
   virtual void visit(DeclarationArray &) = 0; //Visit the String variable  declerations
   virtual void visit(ArrayAccess &) = 0; //Visit the array accessing format;
   virtual void visit(LengthFunction &Node) = 0;  // return the length of an array
+  virtual void visit(MinFunction &Node) = 0;  // return the min element of an array
 };
 
 // AST class serves as the base class for all AST nodes
@@ -284,6 +286,15 @@ class LengthFunction : public Expr {
     llvm::StringRef ArrayName;
 public:
     LengthFunction(llvm::StringRef name) : ArrayName(name) {}
+    llvm::StringRef getArrayName() const { return ArrayName; }
+    
+    void accept(ASTVisitor &V) override { V.visit(*this); }
+};
+
+class MinFunction : public Expr {
+    llvm::StringRef ArrayName;
+public:
+    MinFunction(llvm::StringRef name) : ArrayName(name) {}
     llvm::StringRef getArrayName() const { return ArrayName; }
     
     void accept(ASTVisitor &V) override { V.visit(*this); }

@@ -1075,6 +1075,9 @@ Expr *Parser::parseFactor() {
     if (Tok.is(Token::KW_length)) {
         return parseLengthFunction();
     }
+    else if (Tok.is(Token::KW_min)) {
+        return parseMinFunction();
+    }
 
     Expr *Left = parseFinal();
     if (Left == nullptr) {
@@ -1275,6 +1278,23 @@ Expr* Parser::parseLengthFunction() {
     advance();
 
     return new LengthFunction(arrName);
+}
+
+Expr* Parser::parseMinFunction() {
+    if (expect(Token::KW_min)) return nullptr;
+    advance();
+
+    if (expect(Token::l_paren)) return nullptr;
+    advance();
+
+    if (expect(Token::ident)) return nullptr;
+    llvm::StringRef arrName = Tok.getText();
+    advance();
+
+    if (expect(Token::r_paren)) return nullptr;
+    advance();
+
+    return new MinFunction(arrName);
 }
 
 // logic and comparisions
