@@ -74,6 +74,7 @@ Program *Parser::parseProgram(){
             break;
         }
         case Token::ident: {
+            // llvm::errs() << "start ident\n";
             Token prev_token = Tok;
             const char* prev_buffer = Lex.getBuffer();
             UnaryOp *u;
@@ -101,6 +102,7 @@ Program *Parser::parseProgram(){
                     Lex.setBufferPtr(prev_buffer);
                 }
             }
+            // llvm::errs() << "end unary\n";
         
             Assignment *a_int;
             Assignment *a_bool;
@@ -115,14 +117,16 @@ Program *Parser::parseProgram(){
             }
             Tok = prev_token;
             Lex.setBufferPtr(prev_buffer);
-
+            llvm::errs() << "hereeeee\n";
             a_int = parseIntAssign();
             if (!Tok.is(Token::semicolon))
             {
                 goto _error;
             }
-            if (a_int)
+            if (a_int){
+                llvm::errs() << "get_value ident\n";
                 data.push_back(a_int);
+            }
             else
                 goto _error;
                 
@@ -643,17 +647,32 @@ _error:
     return nullptr;
 }
 
+
 // assignments
 Assignment *Parser::parseBoolAssign()
 {
-    Final *F = nullptr;
-    Assignment::AssignKind AK;
     Logic *L = nullptr;
+    Final *F = nullptr;
+    // Assignment::AssignKind AK;
 
-    F = (Final *)(parseFinal());
-    if (F == nullptr)
-    {
-        goto _error;
+    // F = (Final *)(parseFinal());
+    // if (F == nullptr)
+    // {
+    //     goto _error;
+    // }
+    Expr *LHS = nullptr;
+    Assignment::AssignKind AK;
+    
+    // Try to parse array access as LHS
+    Token prev_tok = Tok;
+    const char* prev_buffer = Lex.getBuffer();
+    LHS = parseArrayAccess();
+    if (!LHS) {
+        // Not array access, try regular variable
+        Tok = prev_tok;
+        Lex.setBufferPtr(prev_buffer);
+        // LHS = parseFinal();
+        F = (Final *)(parseFinal());
     }
     
     if (Tok.is(Token::assign))
@@ -689,10 +708,31 @@ Assignment *Parser::parseIntAssign()
 {
     Expr *E = nullptr;
     Final *F = nullptr;
+    // Assignment::AssignKind AK;
+    // F = (Final *)(parseFinal());
+    // if (F == nullptr)
+    // {
+    //     goto _error;
+    // }
+    Expr *LHS = nullptr;
     Assignment::AssignKind AK;
-    F = (Final *)(parseFinal());
-    if (F == nullptr)
-    {
+    
+    // Try to parse array access as LHS
+    Token prev_tok = Tok;
+    const char* prev_buffer = Lex.getBuffer();
+
+    llvm::errs() <<"first we get in inttassign "<< Tok.getText() <<" "<< Tok.getKind()+16  << "\n";   
+    LHS = parseArrayAccess();
+    if (!LHS) {
+        // llvm::errs() << "didnt accessed to index \n";
+        // Not array access, try regular variable
+        Tok = prev_tok;
+        Lex.setBufferPtr(prev_buffer);
+        // LHS = parseFinal();
+        F = (Final *)(parseFinal());
+    }
+    
+    if (LHS == nullptr) {
         goto _error;
     }
     
@@ -739,11 +779,25 @@ Assignment *Parser::parseFloatAssign()
 {
     Expr *E = nullptr;
     Final *F = nullptr;
+    // Assignment::AssignKind AK;
+    // F = (Final *)(parseFinal());
+    // if (F == nullptr)
+    // {
+    //     goto _error;
+    // }
+    Expr *LHS = nullptr;
     Assignment::AssignKind AK;
-    F = (Final *)(parseFinal());
-    if (F == nullptr)
-    {
-        goto _error;
+    
+    // Try to parse array access as LHS
+    Token prev_tok = Tok;
+    const char* prev_buffer = Lex.getBuffer();
+    LHS = parseArrayAccess();
+    if (!LHS) {
+        // Not array access, try regular variable
+        Tok = prev_tok;
+        Lex.setBufferPtr(prev_buffer);
+        // LHS = parseFinal();
+        F = (Final *)(parseFinal());
     }
     
     if (Tok.is(Token::assign))
@@ -1009,6 +1063,15 @@ _error:
 
 Expr *Parser::parseFinal(){
     Expr *Res = nullptr;
+    Token prev_tok = Tok;
+    const char* prev_buffer = Lex.getBuffer();
+    Res = parseArrayAccess();
+    if (Res) {
+    llvm::errs() << "hereeeee\n";
+        return Res;
+    }
+
+
     switch (Tok.getKind())
     {
     case Token::number:{
@@ -1108,6 +1171,49 @@ _error:
         advance();
     return nullptr;
 }
+
+Expr *Parser::parseArrayAccess() {
+    // llvm::errs() <<"first we getin accessarray  "<< Tok.getText()<< "\n";
+    if (!Tok.is(Token::ident)) {
+        // llvm::errs() << "didnt got the ident\n";
+        return nullptr;
+    }
+    // llvm::errs() << "passed the firstt part\n";
+    llvm::StringRef arrayName = Tok.getText();
+    advance();
+    
+    if (!Tok.is(Token::l_bracket)) {
+        // Not an array access, backtrac
+        // llvm::errs() << "l_bra\n";
+        return nullptr;
+    }
+    // llvm::errs() << "passed the 2 part\n";
+    advance();
+    
+    Expr *index = parseExpr();
+    // llvm::errs() << "passed the 3 part\n";
+    if (!index) {
+        // llvm::errs() << "expression \n";
+        goto _error;
+    }
+    // llvm::errs() << "passed the 4 part\n";
+    // llvm::errs() << Tok.getText()<< "\n";
+    if (!Tok.is(Token::r_bracket)) {
+        // llvm::errs() << "r_bra\n";
+        goto _error;
+    }
+    advance();
+    // llvm::errs() << "passed the 5 part\n";
+    
+    return new ArrayAccess(arrayName, index);
+
+_error:
+    while (Tok.getKind() != Token::eoi)
+        advance();
+    return nullptr;
+}
+
+
 
 // logic and comparisions
 Logic *Parser::parseComparison()

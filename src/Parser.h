@@ -13,14 +13,14 @@ class Parser
 
     void error()
     {
-        llvm::errs() << "Unexpected: " << Tok.getText() << Tok.getKind() << "\n";
+        llvm::errs() << "Unexpected: " << Tok.getText() <<" "<< Tok.getKind() << "\n";
         HasError = true;
     }
 
     // retrieves the next token from the lexer.expect()
     // tests whether the look-ahead is of the expected kind
     void advance() { Lex.next(Tok);
-     llvm::errs() << Tok.getKind() + 16 << '\n';
+     llvm::errs() << Tok.getKind() + 16 << " " << Tok.getText() << '\n';
     }
     
 
@@ -66,6 +66,7 @@ class Parser
     Expr *parseTerm();
     Expr *parseFinal();
     Expr *parseFactor();
+    Expr *parseArrayAccess();
     // logic and comparision
     Logic *parseLogic();
     Logic *parseComparison();

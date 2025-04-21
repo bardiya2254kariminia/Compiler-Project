@@ -342,10 +342,77 @@ ns{
         }
     }
 
+    virtual void visit(ArrayAccess &Node) override {
+        // Get the array pointer
+        Value *ArrayPtr = nameMapArray[Node.getArrayName()];
+        if (!ArrayPtr) {
+            llvm::report_fatal_error("Undefined array: " + Node.getArrayName());
+        }
+
+        // Evaluate the index expression
+        Node.getIndex()->accept(*this);
+        Value *Idx = V;
+
+        // Convert index to i32 if needed
+        if (Idx->getType() != Int32Ty) {
+            Idx = Builder.CreateIntCast(Idx, Int32Ty, true);
+        }
+
+        // Calculate element pointer
+        Value *IndexList[] = {
+            ConstantInt::get(Int32Ty, 0),  // First dimension (always 0)
+            Idx                             // Element index
+        };
+        
+        // Get pointer to the array element
+        Value *ElementPtr = Builder.CreateInBoundsGEP(
+            ArrayPtr->getType()->getPointerElementType(), 
+            ArrayPtr, 
+            IndexList
+        );
+
+        // For now, just return the element pointer
+        // The actual load will be done by the parent node (Assignment or expression)
+        V = ElementPtr;
+    };
+
+
     virtual void visit(Assignment &Node) override
     {
       // Get the name of the variable being assigned.
       llvm::StringRef varName = Node.getLeft()->getVal();
+
+      // Check if this is an array access by looking at the variable name
+      if (nameMapArray.count(varName)) {
+          // This is an array access assignment
+          Value *arrayPtr = nameMapArray[varName];
+          
+          // Get the index expression
+          if (Node.getRightExpr()) {
+              Node.getRightExpr()->accept(*this);
+              Value *index = V;
+              
+              // Get element pointer using GEP
+              Value *indices[] = {
+                  ConstantInt::get(Int32Ty, 0), // First dimension (always 0)
+                  index                         // Element index
+              };
+              
+              // Get pointer to the element
+              Value *elementPtr = Builder.CreateInBoundsGEP(
+                  ArrayTy,       // Array type
+                  arrayPtr,      // Array pointer
+                  indices,       // Index list
+                  "arrayidx"     // Name for the instruction
+              );
+              
+              // Store the value
+              Builder.CreateStore(V, elementPtr);
+          }
+          return;
+      }
+
+      // Regular variable assignment
       Node.getLeft()->accept(*this);
       Value *varVal = V;
 
@@ -392,7 +459,6 @@ ns{
       }else if (nameMapArray.count(varName)) {
           llvm::report_fatal_error("Direct assignment to array variables not supported. Use element-wise assignment.");
       }
-
     };
 
     virtual void visit(Final &Node) override {
@@ -413,7 +479,9 @@ ns{
             return;
           }else if (nameMapArray.count(val)) {
                 // For now, just return the array pointer
-                V = nameMapArray[val];
+                // V = nameMapArray[val];
+            // For array variables in expressions, we need an index
+            llvm::report_fatal_error("Array variable used without index: " + val);
           }else 
               llvm::report_fatal_error("Undefined variable: " + val);
           
@@ -421,7 +489,7 @@ ns{
           // If it's a literal, check the kind and generate the appropriate constant
           if (Node.getKind() == Final::Float) {
               double floatVal;
-              val.getAsDouble(floatVal); // NOT getAsFloat (that doesn’t exist)
+              val.getAsDouble(floatVal); // NOT getAsFloat (that doesn't exist)
               V = ConstantFP::get(FloatTy, floatVal);
           } else if (Node.getKind() == Final::Number) {
               int intVal;

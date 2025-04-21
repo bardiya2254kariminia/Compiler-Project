@@ -14,6 +14,7 @@ class DeclarationChar;
 class DeclarationString;
 class DeclarationBool;
 class DeclarationArray;
+class ArrayAccess;
 class Final;
 class BinaryOp;
 class UnaryOp;
@@ -57,6 +58,7 @@ public:
   virtual void visit(DeclarationChar &) = 0; //Visit the char variable  declerations
   virtual void visit(DeclarationString &) = 0; //Visit the String variable  declerations
   virtual void visit(DeclarationArray &) = 0; //Visit the String variable  declerations
+  virtual void visit(ArrayAccess &) = 0; //Visit the array accessing format;
 };
 
 // AST class serves as the base class for all AST nodes
@@ -259,6 +261,22 @@ public:
   }
 };
 
+class ArrayAccess : public Expr {
+    llvm::StringRef ArrayName;
+    Expr *Index;
+    
+public:
+    ArrayAccess(llvm::StringRef arrayName, Expr *index)
+        : ArrayName(arrayName), Index(index) {}
+    
+    llvm::StringRef getArrayName() const { return ArrayName; }
+    Expr *getIndex() const { return Index; }
+    
+    // For visitor pattern support
+    void accept(ASTVisitor &V) override {
+        V.visit(*this);
+    }
+};
 
 // Final class represents a Final in the AST (either an identifier or a number or true or false)
 class Final : public Expr

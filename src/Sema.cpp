@@ -105,176 +105,38 @@ public:
 
   // Visit function for Assignment nodes and declarations
   virtual void visit(Assignment &Node) override {
-    Final *dest = Node.getLeft();
-    Expr *RightExpr;
-    Logic *RightLogic;
+    // Get the left-hand side expression
+    Expr *array_dest = Node.getLeft();
+    if (!array_dest)
+        return;
 
-    dest->accept(*this);
+    // Check if this is an array access by checking if the variable is in ArrayScope
+    llvm::StringRef varName = static_cast<Final*>(array_dest)->getVal();
+    if (ArrayScope.count(varName)) {
+        // This is an array access assignment
+        if (Node.getRightExpr()) {
+            Expr *RightExpr = Node.getRightExpr();
+            if (!RightExpr)
+                return;
 
-    if (dest->getKind() == Final::Number 
-    || dest->getKind() == Final::Float 
-    || dest->getKind() == Final::Char 
-    || dest->getKind() == Final::String) {
-        llvm::errs() << "Assignment destination must be an identifier, not a number or float";
-        HasError = true;
-    }
-
-    if (BoolScope.find(dest->getVal()) != BoolScope.end()) {
-      RightLogic = Node.getRightLogic();
-      if (RightLogic){
-        RightLogic->accept(*this);
-        if(Node.getAssignKind() != Assignment::AssignKind::Assign){
-          llvm::errs() << "Cannot use mathematical operation on boolean variable: " << dest->getVal() << "\n";
-          HasError = true;
-        }
-      }
-      else{
-        llvm::errs() << "you should assign a boolean value to boolean variable: " << dest->getVal() << "\n";
-        HasError = true;
-      }
-    }else if (IntScope.find(dest->getVal()) != IntScope.end()){
-      RightExpr = Node.getRightExpr();
-      RightLogic = Node.getRightLogic();
-      if (RightExpr){
-        RightExpr->accept(*this);
-      }
-      else if(RightLogic){
-        RightLogic->accept(*this);
-        Comparison* RL = (Comparison*) RightLogic;
-        if (RL){
-          if (RL->getOperator() == Comparison::Ident){
-            Final* F = (Final*)(RL->getLeft());
-            if (IntScope.find(F->getVal()) == IntScope.end()) {
-              llvm::errs() << "you should assign an integer value to an integer variable: " << dest->getVal() << "\n";
-              HasError = true;
-            } 
-          }
-          else{
-            llvm::errs() << "you should assign an integer value to an integer variable: " << dest->getVal() << "\n";
-            HasError = true;
-          }
-        }
-        
-      }else{
-        llvm::errs() << "you should assign an integer value to an integer variable: " << dest->getVal() << "\n";
-        HasError = true;
-      }
-        
-    }else if (FloatScope.find(dest->getVal()) != FloatScope.end()){
-      RightExpr = Node.getRightExpr();
-      RightLogic = Node.getRightLogic();
-      if (RightExpr){
-        RightExpr->accept(*this);
-      }
-      else if(RightLogic){
-        RightLogic->accept(*this);
-        Comparison* RL = (Comparison*) RightLogic;
-        if (RL){
-          if (RL->getOperator() == Comparison::Ident){
-            Final* F = (Final*)(RL->getLeft());
-            if (FloatScope.find(F->getVal()) == FloatScope.end()) {
-              llvm::errs() << "you should assign an integer value to an integer variable: " << dest->getVal() << "\n";
-              HasError = true;
-            } 
-          }
-          else{
-            llvm::errs() << "you should assign an integer value to an integer variable: " << dest->getVal() << "\n";
-            HasError = true;
-          }
-        }
-        
-      }
-      else{
-        llvm::errs() << "you should assign an integer value to an integer variable: " << dest->getVal() << "\n";
-        HasError = true;
-      }
-        
-    }else if (CharScope.find(dest->getVal()) != CharScope.end()) {
-      RightExpr = Node.getRightExpr();
-      RightLogic = Node.getRightLogic();
-      if (RightExpr){
-        RightExpr->accept(*this);
-      }
-      else if(RightLogic){
-        RightLogic->accept(*this);
-        Comparison* RL = (Comparison*) RightLogic;
-        if (RL){
-          if (RL->getOperator() == Comparison::Ident){
-            Final* F = (Final*)(RL->getLeft());
-            if (FloatScope.find(F->getVal()) == FloatScope.end()) {
-              llvm::errs() << "you shouldn't assign an float value to an char variable: " << dest->getVal() << "\n";
-              HasError = true;
-            } 
-          }
-          else{
-            llvm::errs() << "you should assign an integer value to an integer variable: " << dest->getVal() << "\n";
-            HasError = true;
-          }
-        }
-        
-      }
-      else{
-        llvm::errs() << "you should assign an integer value to an integer variable: " << dest->getVal() << "\n";
-        HasError = true;
-      }
-    }else if (StringScope.find(dest->getVal()) != StringScope.end()) {
-      RightExpr = Node.getRightExpr();
-      RightLogic = Node.getRightLogic();
-      if (RightExpr){
-        RightExpr->accept(*this);
-      }
-      else if(RightLogic){
-        RightLogic->accept(*this);
-        Comparison* RL = (Comparison*) RightLogic;
-        if (RL){
-          if (RL->getOperator() == Comparison::Ident){
-            Final* F = (Final*)(RL->getLeft());
-            if (FloatScope.find(F->getVal()) == FloatScope.end()) {
-              llvm::errs() << "you shouldn't assign an float value to an char variable: " << dest->getVal() << "\n";
-              HasError = true;
-            }else if (IntScope.find(F->getVal()) == IntScope.end()){
-              llvm::errs() << "you shouldn't assign an int value to an char variable: " << dest->getVal() << "\n";
-              HasError = true;
-            }else if (BoolScope.find(F->getVal()) == BoolScope.end()){
-              llvm::errs() << "you shouldn't assign an Boolean value to an char variable: " << dest->getVal() << "\n";
-              HasError = true;
-            }else if (CharScope.find(F->getVal()) == CharScope.end()){
-              llvm::errs() << "you shouldn't assign an Char value to an char variable: " << dest->getVal() << "\n";
-              HasError = true;
+            // Check if right side is a Final node
+            if (Final *rightFinal = static_cast<Final*>(RightExpr)) {
+                // Handle array assignment with Final on right side
+                if (rightFinal->getKind() == Final::Number) {
+                    // Valid number assignment
+                    return;
+                }
+                error(Not, "Invalid type for array assignment");
             }
-          }
-          else{
-            llvm::errs() << "you should assign an integer value to an integer variable: " << dest->getVal() << "\n";
-            HasError = true;
-          }
         }
-        
-      }
-      else{
-        llvm::errs() << "you should assign an integer value to an integer variable: " << dest->getVal() << "\n";
-        HasError = true;
-      }
-    }else if (ArrayScope.find(dest->getVal()) != ArrayScope.end()) {
-      llvm::errs() << "Cannot directly assign to array variable " << dest->getVal() 
-                   << ", use array indexing\n";
-      HasError = true;
+        return;
     }
-    
-    
-    if (Node.getAssignKind() == Assignment::AssignKind::Slash_assign) {
 
-      Final* f = (Final*)(RightExpr);
-      if (f)
-      {
-        if (f->getKind() == Final::ValueKind::Number) {
-        llvm::StringRef intval = f->getVal();
-
-        if (intval == "0") {
-          llvm::errs() << "Division by zero is not allowed." << "\n";
-          HasError = true;
-        }
-        }
-      }
+    // Regular variable assignment
+    if (Node.getRightExpr()) {
+        Node.getRightExpr()->accept(*this);
+    } else if (Node.getRightLogic()) {
+        Node.getRightLogic()->accept(*this);
     }
   };
 
@@ -410,7 +272,30 @@ public:
     }
   };
 
+  virtual void visit(ArrayAccess &Node) override {
+    // Check if array is declared
+    if (!ArrayScope.count(Node.getArrayName())) {
+        error(Not, Node.getArrayName());
+        return;
+    }
 
+    // Check index expression
+    Expr *index = Node.getIndex();
+    if (!index)
+        return;
+
+    // Check if index is a Final node
+    if (Final *indexFinal = static_cast<Final*>(index)) {
+        if (indexFinal->getKind() == Final::Number) {
+            // Valid numeric index
+            return;
+        }
+        error(Not, "Array index must be a number");
+    }
+  };
+  
+  
+  
   // comparision and logical and other type
   virtual void visit(Comparison &Node) override {
     if(Node.getLeft()){
