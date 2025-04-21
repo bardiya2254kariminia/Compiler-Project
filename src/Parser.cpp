@@ -706,66 +706,114 @@ _error:
 
 Assignment *Parser::parseIntAssign()
 {
-    Expr *E = nullptr;
-    Final *F = nullptr;
-    Expr *LHS = nullptr;
-    Assignment::AssignKind AK;
-    
-    // Try to parse array access as LHS
-    Token prev_tok = Tok;
-    const char* prev_buffer = Lex.getBuffer();
-    LHS = parseArrayAccess();
-    if (!LHS) {
-        // Not array access, try regular variable
-        Tok = prev_tok;
-        Lex.setBufferPtr(prev_buffer);
-        F = (Final *)(parseFinal());
-        if (!F) {
-            goto _error;
+    // Try to parse array access first
+    AST *LHS = parseArrayAccess();
+    if (LHS) {
+        // If we have an array access, check for assignment operators
+        if (Tok.is(Token::assign))
+        {
+            advance();
+            Expr *E = parseExpr();
+            if (!E)
+                return nullptr;
+            return new Assignment(nullptr, E, Assignment::Assign, nullptr);
         }
-    } else {
-        // For array access, create a Final node with the array name
-        ArrayAccess *arrAccess = static_cast<ArrayAccess*>(LHS);
-        F = new Final(Final::Ident, arrAccess->getArrayName());
+        else if (Tok.is(Token::plus_assign))
+        {
+            advance();
+            Expr *E = parseExpr();
+            if (!E)
+                return nullptr;
+            return new Assignment(nullptr, E, Assignment::Plus_assign, nullptr);
+        }
+        else if (Tok.is(Token::minus_assign))
+        {
+            advance();
+            Expr *E = parseExpr();
+            if (!E)
+                return nullptr;
+            return new Assignment(nullptr, E, Assignment::Minus_assign, nullptr);
+        }
+        else if (Tok.is(Token::star_assign))
+        {
+            advance();
+            Expr *E = parseExpr();
+            if (!E)
+                return nullptr;
+            return new Assignment(nullptr, E, Assignment::Star_assign, nullptr);
+        }
+        else if (Tok.is(Token::slash_assign))
+        {
+            advance();
+            Expr *E = parseExpr();
+            if (!E)
+                return nullptr;
+            return new Assignment(nullptr, E, Assignment::Slash_assign, nullptr);
+        }
+        else if (Tok.is(Token::plus_plus))
+        {
+            advance();
+            // Create a Final node with value "1" for the increment
+            Final *one = new Final(Final::Number, "1");
+            return new Assignment(nullptr, one, Assignment::Plus_assign, nullptr);
+        }
+        else
+        {
+            // If no assignment operator, return nullptr
+            return nullptr;
+        }
     }
-    
+
+    // If not an array access, try to parse a regular variable
+    Expr *F_expr = parseFinal();
+    if (!F_expr)
+        return nullptr;
+
+    // Cast the Expr* to Final* since we know parseFinal returns a Final*
+    Final *F = static_cast<Final*>(F_expr);
+
+    Assignment::AssignKind AK;
     if (Tok.is(Token::assign))
     {
+        advance();
         AK = Assignment::Assign;
     }
     else if (Tok.is(Token::plus_assign))
     {
+        advance();
         AK = Assignment::Plus_assign;
     }
     else if (Tok.is(Token::minus_assign))
     {
+        advance();
         AK = Assignment::Minus_assign;
     }
     else if (Tok.is(Token::star_assign))
     {
+        advance();
         AK = Assignment::Star_assign;
     }
     else if (Tok.is(Token::slash_assign))
     {
+        advance();
         AK = Assignment::Slash_assign;
+    }
+    else if (Tok.is(Token::plus_plus))
+    {
+        advance();
+        // Create a Final node with value "1" for the increment
+        Final *one = new Final(Final::Number, "1");
+        return new Assignment(F, one, Assignment::Plus_assign, nullptr);
     }
     else
     {
-        goto _error;
-    }
-    advance();
-    E = parseExpr();    // check for mathematical expr
-    if(E){
-        return new Assignment(F, E, AK, nullptr);
-    }
-    else{
-        goto _error;
+        return nullptr;
     }
 
-_error:
-    while (Tok.getKind() != Token::eoi)
-        advance();
-    return nullptr;
+    Expr *E = parseExpr();
+    if (!E)
+        return nullptr;
+    return new Assignment(F, E, AK, nullptr);
 }
 
 Assignment *Parser::parseFloatAssign()

@@ -1,7 +1,2 @@
-int a = 10;
-int b = 11;
-for( int i = 1 ; i < 10 ; i++ ){
-    print(a);
-}
 array c = [1, 2 , 3];
-c[0] = 1;
+int a = c[0];
