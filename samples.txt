@@ -27,3 +27,5 @@ int a = c[0];
 //////////////
 array c = [1, 2 , 3];
 int a = length(c) ;
+int a = max(c) ;
+int a = min(c) ;

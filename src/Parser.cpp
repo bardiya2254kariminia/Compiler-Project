@@ -1077,7 +1077,10 @@ Expr *Parser::parseFactor() {
     }
     else if (Tok.is(Token::KW_min)) {
         return parseMinFunction();
+    }else if (Tok.is(Token::KW_max)) {
+        return parseMaxFunction();
     }
+
 
     Expr *Left = parseFinal();
     if (Left == nullptr) {
@@ -1295,6 +1298,23 @@ Expr* Parser::parseMinFunction() {
     advance();
 
     return new MinFunction(arrName);
+}
+
+Expr* Parser::parseMaxFunction() {
+    if (expect(Token::KW_max)) return nullptr;
+    advance();
+
+    if (expect(Token::l_paren)) return nullptr;
+    advance();
+
+    if (expect(Token::ident)) return nullptr;
+    llvm::StringRef arrName = Tok.getText();
+    advance();
+
+    if (expect(Token::r_paren)) return nullptr;
+    advance();
+
+    return new MaxFunction(arrName);
 }
 
 // logic and comparisions

@@ -80,6 +80,8 @@ void Lexer::next(Token &token) {
             kind = Token::KW_length;
         else if (Name == "min")
             kind = Token::KW_min;
+        else if (Name == "max")
+            kind = Token::KW_max;
         else
             kind = Token::ident;
         // generate the token

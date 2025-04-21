@@ -435,6 +435,57 @@ ns{
         V = Builder.CreateLoad(MinVal);
     }
 
+    virtual void visit(MaxFunction &Node) override {
+        auto arrayEntry = nameMapArray[Node.getArrayName()];
+        Value *ArrayPtr = arrayEntry.first;
+        size_t ArraySize = arrayEntry.second;
+
+        // Create loop to find maximum
+        BasicBlock *PreBB = Builder.GetInsertBlock();
+        BasicBlock *CondBB = BasicBlock::Create(M->getContext(), "max.cond", PreBB->getParent());
+        BasicBlock *BodyBB = BasicBlock::Create(M->getContext(), "max.body", PreBB->getParent());
+        BasicBlock *ExitBB = BasicBlock::Create(M->getContext(), "max.exit", PreBB->getParent());
+
+        // Initialize variables
+        AllocaInst *MaxVal = Builder.CreateAlloca(Int32Ty);
+        AllocaInst *Index = Builder.CreateAlloca(Int32Ty);
+        Builder.CreateStore(ConstantInt::get(Int32Ty, INT_MIN), MaxVal); // Initialize to minimum integer
+        Builder.CreateStore(ConstantInt::get(Int32Ty, 0), Index);
+
+        Builder.CreateBr(CondBB);
+
+        // Condition block
+        Builder.SetInsertPoint(CondBB);
+        Value *Idx = Builder.CreateLoad(Index);
+        Value *LoopCond = Builder.CreateICmpSLT(Idx, ConstantInt::get(Int32Ty, ArraySize));
+        Builder.CreateCondBr(LoopCond, BodyBB, ExitBB);
+
+        // Body block
+        Builder.SetInsertPoint(BodyBB);
+        // Load current element
+        Value *GEP = Builder.CreateInBoundsGEP(
+            ArrayPtr->getType()->getPointerElementType(),
+            ArrayPtr,
+            {ConstantInt::get(Int32Ty, 0), Idx}
+        );
+        Value *Current = Builder.CreateLoad(GEP);
+        
+        // Compare with max
+        Value *CurMax = Builder.CreateLoad(MaxVal);
+        Value *IsLarger = Builder.CreateICmpSGT(Current, CurMax); // Changed to SGT
+        Value *NewMax = Builder.CreateSelect(IsLarger, Current, CurMax);
+        Builder.CreateStore(NewMax, MaxVal);
+        
+        // Increment index
+        Value *NextIdx = Builder.CreateAdd(Idx, ConstantInt::get(Int32Ty, 1));
+        Builder.CreateStore(NextIdx, Index);
+        Builder.CreateBr(CondBB);
+
+        // Exit block
+        Builder.SetInsertPoint(ExitBB);
+        V = Builder.CreateLoad(MaxVal);
+    }
+
     virtual void visit(Assignment &Node) override
     {
       // Get the name of the variable being assigned.

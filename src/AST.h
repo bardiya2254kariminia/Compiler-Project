@@ -17,6 +17,7 @@ class DeclarationArray;
 class LengthFunction;
 class ArrayAccess;
 class MinFunction;
+class MaxFunction;
 class Final;
 class BinaryOp;
 class UnaryOp;
@@ -63,6 +64,7 @@ public:
   virtual void visit(ArrayAccess &) = 0; //Visit the array accessing format;
   virtual void visit(LengthFunction &Node) = 0;  // return the length of an array
   virtual void visit(MinFunction &Node) = 0;  // return the min element of an array
+  virtual void visit(MaxFunction &Node) = 0;  // return the max element of an array
 };
 
 // AST class serves as the base class for all AST nodes
@@ -300,6 +302,14 @@ public:
     void accept(ASTVisitor &V) override { V.visit(*this); }
 };
 
+class MaxFunction : public Expr {
+    llvm::StringRef ArrayName;
+public:
+    MaxFunction(llvm::StringRef name) : ArrayName(name) {}
+    llvm::StringRef getArrayName() const { return ArrayName; }
+    
+    void accept(ASTVisitor &V) override { V.visit(*this); }
+};
 
 // Final class represents a Final in the AST (either an identifier or a number or true or false)
 class Final : public Expr

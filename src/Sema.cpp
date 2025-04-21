@@ -446,6 +446,12 @@ public:
       }
   }
 
+  virtual void visit(MaxFunction &Node) override {
+      if (ArrayScope.find(Node.getArrayName()) == ArrayScope.end()) {
+          error(Not, Node.getArrayName());
+      }
+  }
+
 };
 }
 
