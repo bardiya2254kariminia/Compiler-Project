@@ -395,26 +395,39 @@ public:
   };
 
   virtual void visit(ForStmt &Node) override {
-    Assignment *first = Node.getFirst();
-    (*first).accept(*this);
-
-    Logic *second = Node.getSecond();
-    (*second).accept(*this);
-
-    Assignment *assign = Node.getThirdAssign();
-    if(assign)
-      (*assign).accept(*this);
-    else{
-
-
-      
-      UnaryOp *unary = Node.getThirdUnary();
-      (*unary).accept(*this);
+    // Visit the initialization part
+    if (Node.getFirst())
+    {
+        // If it's an assignment from a declaration, add the variable to the symbol table
+        if (Node.getFirst()->getLeft() && Node.getFirst()->getRightExpr())
+        {
+            llvm::StringRef varName = Node.getFirst()->getLeft()->getVal();
+            // Add the variable to the symbol table
+            IntScope.insert(varName);
+        }
+        Node.getFirst()->accept(*this);
     }
-      
 
-    for (llvm::SmallVector<AST *>::const_iterator I = Node.begin(), E = Node.end(); I != E; ++I) {
-      (*I)->accept(*this);
+    // Visit the condition
+    if (Node.getSecond())
+    {
+        Node.getSecond()->accept(*this);
+    }
+
+    // Visit the increment part
+    if (Node.getThirdAssign())
+    {
+        Node.getThirdAssign()->accept(*this);
+    }
+    else if (Node.getThirdUnary())
+    {
+        Node.getThirdUnary()->accept(*this);
+    }
+
+    // Visit the body
+    for (auto *S : Node)
+    {
+        S->accept(*this);
     }
   };
 

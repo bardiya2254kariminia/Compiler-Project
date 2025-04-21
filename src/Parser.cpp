@@ -1657,7 +1657,6 @@ ForStmt *Parser::parseFor()
     if (Body.empty()) {
         goto _error;
     }
-    // llvm::errs() << "here\n"; 
 
     return new ForStmt(First, Second, ThirdAssign, ThirdUnary, Body);
 

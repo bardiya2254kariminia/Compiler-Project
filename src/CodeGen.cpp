@@ -766,33 +766,70 @@ ns{
 
     virtual void visit(ForStmt &Node) override
     {
-      llvm::BasicBlock* ForCondBB = llvm::BasicBlock::Create(M->getContext(), "for.cond", Builder.GetInsertBlock()->getParent());
-      llvm::BasicBlock* ForBodyBB = llvm::BasicBlock::Create(M->getContext(), "for.body", Builder.GetInsertBlock()->getParent());
-      llvm::BasicBlock* AfterForBB = llvm::BasicBlock::Create(M->getContext(), "after.for", Builder.GetInsertBlock()->getParent());
+      // Create basic blocks for the for loop
+      llvm::BasicBlock *CondBB = llvm::BasicBlock::Create(M->getContext(), "for.cond", Builder.GetInsertBlock()->getParent());
+      llvm::BasicBlock *BodyBB = llvm::BasicBlock::Create(M->getContext(), "for.body", Builder.GetInsertBlock()->getParent());
+      llvm::BasicBlock *AfterBB = llvm::BasicBlock::Create(M->getContext(), "for.after", Builder.GetInsertBlock()->getParent());
 
-      Node.getFirst()->accept(*this);
+      // Handle initialization
+      if (Node.getFirst())
+      {
+          // If it's an assignment from a declaration, create the variable
+          if (Node.getFirst()->getLeft() && Node.getFirst()->getRightExpr())
+          {
+              llvm::StringRef varName = Node.getFirst()->getLeft()->getVal();
+              // Create alloca for the variable
+              llvm::AllocaInst *Alloca = Builder.CreateAlloca(Int32Ty);
+              // Store the variable in the symbol table
+              nameMapInt[varName] = Alloca;
+              // Generate code for the initialization value
+              Node.getFirst()->getRightExpr()->accept(*this);
+              // Store the initialization value
+              Builder.CreateStore(V, Alloca);
+          }
+          else
+          {
+              Node.getFirst()->accept(*this);
+          }
+      }
 
-      Builder.CreateBr(ForCondBB); //?
+      // Branch to condition block
+      Builder.CreateBr(CondBB);
 
-      Builder.SetInsertPoint(ForCondBB);
-      Node.getSecond()->accept(*this);
-      Value* val=V;
-      Builder.CreateCondBr(val, ForBodyBB, AfterForBB);
-
-      Builder.SetInsertPoint(ForBodyBB);
-      for (llvm::SmallVector<AST* >::const_iterator I = Node.begin(), E = Node.end(); I != E; ++I)
-        {
-            (*I)->accept(*this);
-        }
-
-      if (Node.getThirdAssign() == nullptr)
-        Node.getThirdUnary()->accept(*this);
+      // Condition block
+      Builder.SetInsertPoint(CondBB);
+      if (Node.getSecond())
+      {
+          Node.getSecond()->accept(*this);
+          Builder.CreateCondBr(V, BodyBB, AfterBB);
+      }
       else
-        Node.getThirdAssign()->accept(*this);
+      {
+          Builder.CreateBr(BodyBB);
+      }
 
-      Builder.CreateBr(ForCondBB);
+      // Body block
+      Builder.SetInsertPoint(BodyBB);
+      for (auto *S : Node)
+      {
+          S->accept(*this);
+      }
 
-      Builder.SetInsertPoint(AfterForBB);
+      // Handle increment
+      if (Node.getThirdAssign())
+      {
+          Node.getThirdAssign()->accept(*this);
+      }
+      else if (Node.getThirdUnary())
+      {
+          Node.getThirdUnary()->accept(*this);
+      }
+
+      // Branch back to condition
+      Builder.CreateBr(CondBB);
+
+      // After block
+      Builder.SetInsertPoint(AfterBB);
     };
 
     virtual void visit(IfStmt &Node) override{
