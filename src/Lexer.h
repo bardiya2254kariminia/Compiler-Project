@@ -69,7 +69,8 @@ public:
         KW_min,  // min keyword
         KW_max,  // max keyword
         KW_index,  // index function
-        KW_pow  // power function
+        KW_pow,  // power function
+        KW_abs  // absolute value function
     };
 
 private:

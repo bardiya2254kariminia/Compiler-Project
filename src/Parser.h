@@ -72,6 +72,7 @@ class Parser
     Expr *parseMaxFunction();
     Expr *parseIndexFunction(); 
     Expr *parsePowFunction(); 
+    Expr *parseAbsFunction();
 
     // logic and comparision
     Logic *parseLogic();

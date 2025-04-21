@@ -1087,6 +1087,9 @@ Expr *Parser::parseFactor() {
     else if (Tok.is(Token::KW_pow)) {
         return parsePowFunction();
     }
+    else if (Tok.is(Token::KW_abs)) {
+        return parseAbsFunction();
+    }
 
     Expr *Left = parseFinal();
     if (Left == nullptr) {
@@ -1404,6 +1407,45 @@ Expr* Parser::parsePowFunction() {
 
     // Create a BinaryOp with Exp operator, reusing the existing ^ implementation
     return new BinaryOp(BinaryOp::Exp, baseExpr, expExpr);
+}
+
+Expr* Parser::parseAbsFunction() {
+    // Check for abs keyword
+    if (!Tok.is(Token::KW_abs)) {
+        return nullptr;
+    }
+    advance();
+
+    // Check for opening parenthesis
+    if (!Tok.is(Token::l_paren)) {
+        return nullptr;
+    }
+    advance();
+
+    // Parse the value expression
+    Expr* valueExpr = parseExpr();
+    if (!valueExpr) {
+        return nullptr;
+    }
+
+    // Check for closing parenthesis
+    if (!Tok.is(Token::r_paren)) {
+        return nullptr;
+    }
+    advance();
+
+    // If the value is a number or float token, we can modify its value directly
+    if (Tok.is(Token::number) || Tok.is(Token::float_num)) {
+        llvm::StringRef val = Tok.getText();
+        // If the value starts with '-', remove it to get the absolute value
+        if (val.startswith("-")) {
+            return new Final(Tok.is(Token::number) ? Final::Number : Final::Float, val.drop_front(1));
+        }
+    }
+
+    // If we can't modify the value directly, create a comparison to handle the absolute value
+    // This will be handled in code generation
+    return valueExpr;
 }
 
 // logic and comparisions

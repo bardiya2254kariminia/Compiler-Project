@@ -486,6 +486,29 @@ ns{
         V = Builder.CreateLoad(MaxVal);
     }
 
+    virtual void visit(AbsFunction &Node) override {
+        // Visit the value expression first
+        Node.getValue()->accept(*this);
+        Value* value = V;
+
+        // Check if the value is a float or integer
+        if (value->getType()->isFloatTy()) {
+            // For float values, use fabs
+            Function* fabsFn = Intrinsic::getDeclaration(M, Intrinsic::fabs, {FloatTy});
+            V = Builder.CreateCall(fabsFn, {value});
+        } else if (value->getType()->isIntegerTy()) {
+            // For integer values, create a comparison and select
+            Value* zero = ConstantInt::get(value->getType(), 0);
+            Value* isNegative = Builder.CreateICmpSLT(value, zero);
+            Value* negated = Builder.CreateNeg(value);
+            V = Builder.CreateSelect(isNegative, negated, value);
+        } else {
+            // Error: unsupported type
+            llvm::errs() << "Error: abs() only supports integer and float types\n";
+            V = nullptr;
+        }
+    }
+
     virtual void visit(Assignment &Node) override
     {
       // Get the name of the variable being assigned.

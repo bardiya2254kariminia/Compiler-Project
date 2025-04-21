@@ -452,6 +452,11 @@ public:
       }
   }
 
+  virtual void visit(AbsFunction &Node) override {
+    // Visit the value expression to check its validity
+    Node.getValue()->accept(*this);
+  }
+
 };
 }
 

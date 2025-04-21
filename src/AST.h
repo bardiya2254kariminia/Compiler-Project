@@ -32,6 +32,7 @@ class WhileStmt;
 class elifStmt;
 class ForStmt;
 class PrintStmt;
+class AbsFunction;
 
 // ASTVisitor class defines a visitor pattern to traverse the AST
 class ASTVisitor
@@ -65,6 +66,7 @@ public:
   virtual void visit(LengthFunction &Node) = 0;  // return the length of an array
   virtual void visit(MinFunction &Node) = 0;  // return the min element of an array
   virtual void visit(MaxFunction &Node) = 0;  // return the max element of an array
+  virtual void visit(AbsFunction &Node) = 0;  // return the absolute value of a number
 };
 
 // AST class serves as the base class for all AST nodes
