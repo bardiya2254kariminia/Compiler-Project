@@ -1,2 +1,2 @@
 array c = [1, 2 , 3];
-int a = c[0];
+int a = length(c) ;

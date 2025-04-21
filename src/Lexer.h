@@ -64,7 +64,8 @@ public:
         KW_for,         // for
         KW_and,         // and
         KW_or,          // or
-        KW_print        // print
+        KW_print,        // print
+        KW_length        // length of an array
     };
 
 private:

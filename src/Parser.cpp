@@ -1070,15 +1070,17 @@ _error:
     return nullptr;
 }
 
-Expr *Parser::parseFactor()
-{
+Expr *Parser::parseFactor() {
+    // Try to parse length function first
+    if (Tok.is(Token::KW_length)) {
+        return parseLengthFunction();
+    }
+
     Expr *Left = parseFinal();
-    if (Left == nullptr)
-    {
+    if (Left == nullptr) {
         goto _error;
     }
-    while (Tok.is(Token::exp))
-    {
+    while (Tok.is(Token::exp)) {
         BinaryOp::Operator Op;
         if (Tok.is(Token::exp))
             Op = BinaryOp::Exp;
@@ -1088,8 +1090,7 @@ Expr *Parser::parseFactor()
         }
         advance();
         Expr *Right = parseFactor();
-        if (Right == nullptr)
-        {
+        if (Right == nullptr) {
             goto _error;
         }
         Left = new BinaryOp(Op, Left, Right);
@@ -1102,45 +1103,42 @@ _error:
     return nullptr;
 }
 
-Expr *Parser::parseFinal(){
+Expr *Parser::parseFinal() {
     Expr *Res = nullptr;
     Token prev_tok = Tok;
     const char* prev_buffer = Lex.getBuffer();
     Res = parseArrayAccess();
     if (Res) {
-    llvm::errs() << "hereeeee\n";
         return Res;
     }
 
-
-    switch (Tok.getKind())
-    {
-    case Token::number:{
+    switch (Tok.getKind()) {
+    case Token::number: {
         Res = new Final(Final::Number, Tok.getText());
         advance();
         break;
     }
-    case Token::KW_true:{
+    case Token::KW_true: {
         Res = new Final(Final::Number, "1");
         advance();
         break;
     }
-    case Token::KW_false:{
+    case Token::KW_false: {
         Res = new Final(Final::Number, "0");
         advance();
         break;
     }
-    case Token::float_num:{
+    case Token::float_num: {
         Res = new Final(Final::Float, Tok.getText());
         advance();
         break;
     }
-    case Token::character:{
+    case Token::character: {
         Res = new Final(Final::Char, Tok.getText());
         advance();
         break;
     }
-    case Token::string:{
+    case Token::string: {
         Res = new Final(Final::String, Tok.getText());
         advance();
         break;
@@ -1152,33 +1150,32 @@ Expr *Parser::parseFinal(){
         Expr* u = parseUnary();
         if(u)
             return u;
-        else{
+        else {
             Tok = prev_tok;
             Lex.setBufferPtr(prev_buffer);
             advance();
         }
         break;
     }
-    case Token::plus:{
+    case Token::plus: {
         advance();
-        if(Tok.getKind() == Token::number){
+        if(Tok.getKind() == Token::number) {
             Res = new SignedNumber(SignedNumber::Plus, Tok.getText());
             advance();
             break;
         }
         goto _error;
     }
-
-    case Token::minus:{
+    case Token::minus: {
         advance();
-        if (Tok.getKind() == Token::number){
+        if (Tok.getKind() == Token::number) {
             Res = new SignedNumber(SignedNumber::Minus, Tok.getText());
             advance();
             break;
         }
         goto _error;
     }
-    case Token::minus_paren:{
+    case Token::minus_paren: {
         advance();
         Expr *math_expr = parseExpr();
         if(math_expr == nullptr)
@@ -1188,20 +1185,17 @@ Expr *Parser::parseFinal(){
             break;
         
         goto _error;
-
     }
-    case Token::l_paren:{
+    case Token::l_paren: {
         advance();
         Res = parseExpr();
-        if(Res == nullptr){
+        if(Res == nullptr) {
             goto _error;
         }
         if (!consume(Token::r_paren))
             break;
-        
     }
-    default:{
-        // error();
+    default: {
         goto _error;
     }
     }
@@ -1254,7 +1248,34 @@ _error:
     return nullptr;
 }
 
+Expr* Parser::parseLengthFunction() {
+    // Check for length keyword
+    if (!Tok.is(Token::KW_length)) {
+        return nullptr;
+    }
+    advance();
 
+    // Check for opening parenthesis
+    if (!Tok.is(Token::l_paren)) {
+        return nullptr;
+    }
+    advance();
+
+    // Check for array identifier
+    if (!Tok.is(Token::ident)) {
+        return nullptr;
+    }
+    llvm::StringRef arrName = Tok.getText();
+    advance();
+
+    // Check for closing parenthesis
+    if (!Tok.is(Token::r_paren)) {
+        return nullptr;
+    }
+    advance();
+
+    return new LengthFunction(arrName);
+}
 
 // logic and comparisions
 Logic *Parser::parseComparison()
@@ -1480,8 +1501,6 @@ IfStmt *Parser::parseIf()
                 if (expect(Token::r_paren)){
                     goto _error;
                 }
-
-                advance();
 
                 if (expect(Token::l_brace)){
                     goto _error;

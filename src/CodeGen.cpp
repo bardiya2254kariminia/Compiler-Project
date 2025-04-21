@@ -39,7 +39,7 @@ ns{
     StringMap<AllocaInst *> nameMapBool;
     StringMap<AllocaInst *> nameMapFloat;
     StringMap<AllocaInst *> nameMapChar;
-    StringMap<Value *> nameMapArray; // New map for array variables
+    StringMap<std::pair<Value*, size_t>> nameMapArray; // New map for array variables
 
     // int print
     FunctionType *PrintIntFnTy;
@@ -319,7 +319,7 @@ ns{
         for (auto Var = Node.varBegin(), End = Node.varEnd(); Var != End; ++Var) {
             // Allocate memory for the array
             AllocaInst *arrayAlloca = Builder.CreateAlloca(arrayType);
-            nameMapArray[*Var] = arrayAlloca;
+            nameMapArray[*Var] = {arrayAlloca, arraySize}; 
             
             // Initialize each element
             unsigned index = 0;
@@ -342,10 +342,18 @@ ns{
         }
     }
 
+    virtual void visit(LengthFunction &Node) override {
+        auto arrayEntry = nameMapArray[Node.getArrayName()];
+        if (!arrayEntry.first) {
+            llvm::report_fatal_error("Unknown array: " + Node.getArrayName());
+        }
+        V = ConstantInt::get(Int32Ty, arrayEntry.second);
+    }
+
     virtual void visit(ArrayAccess &Node) override {
-        // Get the array pointer
-        Value *ArrayPtr = nameMapArray[Node.getArrayName()];
-        if (!ArrayPtr) {
+        // Get the array pointer from the pair
+        auto arrayEntry = nameMapArray[Node.getArrayName()];
+        if (!arrayEntry.first) {
             llvm::report_fatal_error("Undefined array: " + Node.getArrayName());
         }
 
@@ -366,8 +374,8 @@ ns{
         
         // Get pointer to the array element
         Value *ElementPtr = Builder.CreateInBoundsGEP(
-            ArrayPtr->getType()->getPointerElementType(), 
-            ArrayPtr, 
+            arrayEntry.first->getType()->getPointerElementType(), 
+            arrayEntry.first, 
             IndexList
         );
 
@@ -388,7 +396,8 @@ ns{
       // Check if this is an array access by looking at the variable name
       if (nameMapArray.count(varName)) {
           // This is an array access assignment
-          Value *arrayPtr = nameMapArray[varName];
+          auto arrayEntry = nameMapArray[varName];
+          Value *arrayPtr = arrayEntry.first;
           
           // Get the index expression
           if (Node.getRightExpr()) {

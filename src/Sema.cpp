@@ -434,6 +434,12 @@ public:
   virtual void visit(SignedNumber &Node) override {
   };
 
+  virtual void visit(LengthFunction &Node) override {
+      if (ArrayScope.find(Node.getArrayName()) == ArrayScope.end()) {
+          error(Not, Node.getArrayName());
+      }
+  }
+
 };
 }
 

@@ -67,6 +67,8 @@ class Parser
     Expr *parseFinal();
     Expr *parseFactor();
     Expr *parseArrayAccess();
+    Expr *parseLengthFunction();
+    
     // logic and comparision
     Logic *parseLogic();
     Logic *parseComparison();
