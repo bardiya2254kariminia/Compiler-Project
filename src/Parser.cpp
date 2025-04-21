@@ -708,32 +708,25 @@ Assignment *Parser::parseIntAssign()
 {
     Expr *E = nullptr;
     Final *F = nullptr;
-    // Assignment::AssignKind AK;
-    // F = (Final *)(parseFinal());
-    // if (F == nullptr)
-    // {
-    //     goto _error;
-    // }
     Expr *LHS = nullptr;
     Assignment::AssignKind AK;
     
     // Try to parse array access as LHS
     Token prev_tok = Tok;
     const char* prev_buffer = Lex.getBuffer();
-
-    llvm::errs() <<"first we get in inttassign "<< Tok.getText() <<" "<< Tok.getKind()+16  << "\n";   
     LHS = parseArrayAccess();
     if (!LHS) {
-        // llvm::errs() << "didnt accessed to index \n";
         // Not array access, try regular variable
         Tok = prev_tok;
         Lex.setBufferPtr(prev_buffer);
-        // LHS = parseFinal();
         F = (Final *)(parseFinal());
-    }
-    
-    if (LHS == nullptr) {
-        goto _error;
+        if (!F) {
+            goto _error;
+        }
+    } else {
+        // For array access, create a Final node with the array name
+        ArrayAccess *arrAccess = static_cast<ArrayAccess*>(LHS);
+        F = new Final(Final::Ident, arrAccess->getArrayName());
     }
     
     if (Tok.is(Token::assign))
@@ -770,9 +763,9 @@ Assignment *Parser::parseIntAssign()
     }
 
 _error:
-        while (Tok.getKind() != Token::eoi)
-            advance();
-        return nullptr;
+    while (Tok.getKind() != Token::eoi)
+        advance();
+    return nullptr;
 }
 
 Assignment *Parser::parseFloatAssign()

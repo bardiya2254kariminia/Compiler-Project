@@ -380,7 +380,10 @@ ns{
     virtual void visit(Assignment &Node) override
     {
       // Get the name of the variable being assigned.
-      llvm::StringRef varName = Node.getLeft()->getVal();
+      llvm::StringRef varName;
+      if (Node.getLeft()) {
+          varName = Node.getLeft()->getVal();
+      }
 
       // Check if this is an array access by looking at the variable name
       if (nameMapArray.count(varName)) {
@@ -392,6 +395,9 @@ ns{
               Node.getRightExpr()->accept(*this);
               Value *index = V;
               
+              // Get the array type from the pointer
+              Type *arrayType = arrayPtr->getType()->getPointerElementType();
+              
               // Get element pointer using GEP
               Value *indices[] = {
                   ConstantInt::get(Int32Ty, 0), // First dimension (always 0)
@@ -400,7 +406,7 @@ ns{
               
               // Get pointer to the element
               Value *elementPtr = Builder.CreateInBoundsGEP(
-                  ArrayTy,       // Array type
+                  arrayType,     // Array type
                   arrayPtr,      // Array pointer
                   indices,       // Index list
                   "arrayidx"     // Name for the instruction
@@ -413,51 +419,53 @@ ns{
       }
 
       // Regular variable assignment
-      Node.getLeft()->accept(*this);
-      Value *varVal = V;
+      if (Node.getLeft()) {
+          Node.getLeft()->accept(*this);
+          Value *varVal = V;
 
-      if (Node.getRightExpr() == nullptr)
-        Node.getRightLogic()->accept(*this);        
-      else
-        Node.getRightExpr()->accept(*this);
+          if (Node.getRightExpr() == nullptr)
+              Node.getRightLogic()->accept(*this);        
+          else
+              Node.getRightExpr()->accept(*this);
 
-      Value *val = V;
+          Value *val = V;
 
-      switch (Node.getAssignKind())
-      {
-      case Assignment::Plus_assign:
-        val = Builder.CreateNSWAdd(varVal, val);
-        break;
-      case Assignment::Minus_assign:
-        val = Builder.CreateNSWSub(varVal, val);
-        break;
-      case Assignment::Star_assign:
-        val = Builder.CreateNSWMul(varVal, val);
-        break;
-      case Assignment::Slash_assign:
-        val = Builder.CreateSDiv(varVal, val);
-        break;
-      default:
-        break;
-      }
+          switch (Node.getAssignKind())
+          {
+          case Assignment::Plus_assign:
+              val = Builder.CreateNSWAdd(varVal, val);
+              break;
+          case Assignment::Minus_assign:
+              val = Builder.CreateNSWSub(varVal, val);
+              break;
+          case Assignment::Star_assign:
+              val = Builder.CreateNSWMul(varVal, val);
+              break;
+          case Assignment::Slash_assign:
+              val = Builder.CreateSDiv(varVal, val);
+              break;
+          default:
+              break;
+          }
 
-      // Create a store instruction to assign the value to the variable.
-      if (isBool(((Final*)Node.getLeft())->getVal()))
-        Builder.CreateStore(val, nameMapBool[varName]);
-      else if (nameMapString.count(varName)) {
-        if (Node.getAssignKind() != Assignment::Assign) {
-            llvm::report_fatal_error("Compound assignment not supported for strings");
-        }
-        Builder.CreateStore(val, nameMapString[varName]);
-        return;
-      }else if(nameMapInt.count(varName)){
-          Builder.CreateStore(val, nameMapInt[varName]);
-      }else if(nameMapChar.count(varName)){
-          Builder.CreateStore(val, nameMapChar[varName]);
-      }else if(nameMapFloat.count(varName)){
-          Builder.CreateStore(val, nameMapFloat[varName]);
-      }else if (nameMapArray.count(varName)) {
-          llvm::report_fatal_error("Direct assignment to array variables not supported. Use element-wise assignment.");
+          // Create a store instruction to assign the value to the variable.
+          if (isBool(varName))
+              Builder.CreateStore(val, nameMapBool[varName]);
+          else if (nameMapString.count(varName)) {
+              if (Node.getAssignKind() != Assignment::Assign) {
+                  llvm::report_fatal_error("Compound assignment not supported for strings");
+              }
+              Builder.CreateStore(val, nameMapString[varName]);
+              return;
+          } else if(nameMapInt.count(varName)) {
+              Builder.CreateStore(val, nameMapInt[varName]);
+          } else if(nameMapChar.count(varName)) {
+              Builder.CreateStore(val, nameMapChar[varName]);
+          } else if(nameMapFloat.count(varName)) {
+              Builder.CreateStore(val, nameMapFloat[varName]);
+          } else if (nameMapArray.count(varName)) {
+              llvm::report_fatal_error("Direct assignment to array variables not supported. Use element-wise assignment.");
+          }
       }
     };
 
