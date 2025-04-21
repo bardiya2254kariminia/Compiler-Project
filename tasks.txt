@@ -1,0 +1,2 @@
+the float cannot be assigned with neg value
+float a = -0.2;
