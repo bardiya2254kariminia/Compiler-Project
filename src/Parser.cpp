@@ -1581,94 +1581,90 @@ ForStmt *Parser::parseFor()
     Token prev_token;
     const char* prev_buffer;
 
-    if (expect(Token::KW_for)){
+    if (expect(Token::KW_for)) {
         goto _error;
     }
-        
     advance();
 
-    if(expect(Token::l_paren)){
+    if (expect(Token::l_paren)) {
         goto _error;
     }
-
     advance();
 
-    if (expect(Token::KW_int)){
-        goto _error;
-    }
-        
-    advance();
-
-    First = parseIntAssign();
-
-    if (First == nullptr)
-        goto _error;
-        
-    if (First->getAssignKind() != Assignment::Assign)    // The first part can only have a '=' sign
-        goto _error;
-
-    if(expect(Token::semicolon)){
-        goto _error;
-    }
-
-    advance();
-
-    Second = parseLogic();
-
-    if (Second == nullptr)
-        goto _error;
-        
-    if(expect(Token::semicolon)){
-        goto _error;
-    }
-
-    advance();
-
-    prev_token = Tok;
-    prev_buffer = Lex.getBuffer();
-
-    ThirdAssign = parseIntAssign();
-
-    if (ThirdAssign == nullptr){
-        Tok = prev_token;
-        Lex.setBufferPtr(prev_buffer);
-
-        ThirdUnary = parseUnary();
-        if (ThirdUnary == nullptr){
-            goto _error;
+    // Parse the initializer as a declaration (e.g., int i = 0)
+    if (Tok.is(Token::KW_int)) {
+        DeclarationInt *decl = parseIntDec();
+        if (!decl || decl->varBegin() == decl->varEnd()) {
+            goto _error; // Invalid declaration or no variables
         }
 
-    }
-    else{
-        if(ThirdAssign->getAssignKind() == Assignment::Assign)   // The third part cannot have only '=' sign
-            goto _error;
+        // Extract the first declared variable and its initial value
+        llvm::StringRef varName = *decl->varBegin();
+        Expr *initValue = *decl->valBegin();
+
+        // Create an Assignment node from the declaration
+        Final *F = new Final(Final::Ident, varName);
+        First = new Assignment(F, initValue, Assignment::Assign, nullptr);
+    } else {
+        goto _error; // Only int declarations supported in initializer for this example
     }
 
-
-    if(expect(Token::r_paren)){
+    if (expect(Token::semicolon)) {
         goto _error;
     }
-
     advance();
 
-    if(expect(Token::l_brace)){
+    // Parse condition
+    Second = parseLogic();
+    if (!Second) {
         goto _error;
     }
 
+    if (expect(Token::semicolon)) {
+        goto _error;
+    }
+    advance();
+
+    // Parse increment part
+    prev_token = Tok;
+    prev_buffer = Lex.getBuffer();
+    ThirdAssign = parseIntAssign();
+
+    if (!ThirdAssign) {
+        Tok = prev_token;
+        Lex.setBufferPtr(prev_buffer);
+        ThirdUnary = parseUnary();
+        if (!ThirdUnary) {
+            goto _error;
+        }
+    } else {
+        if (ThirdAssign->getAssignKind() == Assignment::Assign) {
+            goto _error; // Third part cannot be simple assignment
+        }
+    }
+
+    if (expect(Token::r_paren)) {
+        goto _error;
+    }
+    advance();
+
+    if (expect(Token::l_brace)) {
+        goto _error;
+    }
     advance();
 
     Body = getBody();
-
-    if (Body.empty())
+    if (Body.empty()) {
         goto _error;
+    }
+    // llvm::errs() << "here\n"; 
 
     return new ForStmt(First, Second, ThirdAssign, ThirdUnary, Body);
 
 _error:
     while (Tok.getKind() != Token::eoi)
         advance();
-    return nullptr;  
-
+    return nullptr;
 }
 
 void Parser::parseComment()
