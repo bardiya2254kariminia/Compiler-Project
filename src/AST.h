@@ -433,17 +433,25 @@ public:
     Plus,
     Minus
   };
+  enum Type
+  {
+    Float,
+    Number
+  };
 
 private:
   llvm::StringRef Value;                              
-  Sign s;                              
+  Sign s;
+  Type t;                         
 
 public:
-  SignedNumber(Sign S, llvm::StringRef V) : s(S), Value(V) {}
+  SignedNumber(Sign S, llvm::StringRef V , Type t) : s(S), Value(V) ,t(t) {}
 
   llvm::StringRef getValue() { return Value; }
 
   Sign getSign() { return s; }
+
+  Type getType() { return t; }
 
   virtual void accept(ASTVisitor &V) override
   {

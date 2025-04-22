@@ -1,2 +1,2 @@
-array c = [1, 2 , 3];
-float a = -2.03;
+int a;
+print(1);

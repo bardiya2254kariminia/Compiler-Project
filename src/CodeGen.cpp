@@ -751,6 +751,11 @@ ns{
       int intval;
       Node.getValue().getAsInteger(10, intval);
       V = ConstantInt::get(Int32Ty, (Node.getSign() == SignedNumber::Minus) ? -intval : intval, true);
+      if (Node.getType() == SignedNumber::Float){
+        double floatVal;
+        Node.getValue().getAsDouble(floatVal);
+        V = ConstantFP::get(FloatTy, (Node.getSign() == SignedNumber::Minus) ? -floatVal : floatVal);
+      }
     };
 
     virtual void visit(NegExpr &Node) override

@@ -998,6 +998,7 @@ _error:
 // expressions
 Expr *Parser::parseExpr()
 {
+    llvm :: errs() << "expr sign found" << Tok.getKind() + 16<< " " << Tok.getText() << "\n";
     Expr *Left = parseTerm();
 
     if (Left == nullptr)
@@ -1007,11 +1008,14 @@ Expr *Parser::parseExpr()
     
     while (Tok.isOneOf(Token::plus, Token::minus))
     {
+        llvm :: errs() <<"HERE"<< "\n";
         BinaryOp::Operator Op;
         if (Tok.is(Token::plus))
             Op = BinaryOp::Plus;
-        else if (Tok.is(Token::minus))
+        else if (Tok.is(Token::minus)){
+            llvm :: errs() << "minus sign found \n";
             Op = BinaryOp::Minus;
+        }
         else {
             error();
 
@@ -1175,16 +1179,25 @@ Expr *Parser::parseFinal() {
     case Token::plus: {
         advance();
         if(Tok.getKind() == Token::number) {
-            Res = new SignedNumber(SignedNumber::Plus, Tok.getText());
+            Res = new SignedNumber(SignedNumber::Plus, Tok.getText() , SignedNumber:: Number);
+            advance();
+            break;
+        }else if (Tok.getKind() == Token::float_num){
+            Res = new SignedNumber(SignedNumber::Plus, Tok.getText() , SignedNumber:: Float);
             advance();
             break;
         }
         goto _error;
     }
     case Token::minus: {
+        llvm :: errs() << "found the minus in final" << Tok.getKind() + 16<< " " << Tok.getText() << "\n";
         advance();
         if (Tok.getKind() == Token::number) {
-            Res = new SignedNumber(SignedNumber::Minus, Tok.getText());
+            Res = new SignedNumber(SignedNumber::Minus, Tok.getText() , SignedNumber:: Number);
+            advance();
+            break;
+        }else if (Tok.getKind() == Token::float_num){
+            Res = new SignedNumber(SignedNumber::Minus, Tok.getText() , SignedNumber:: Float);
             advance();
             break;
         }
