@@ -1,3 +1,2 @@
-string a = "ali" ; 
-
+boolean a = true ; 
 print(a);
