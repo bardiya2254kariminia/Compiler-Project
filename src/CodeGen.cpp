@@ -862,6 +862,7 @@ ns{
         CallInst *Call = Builder.CreateCall(PrintBoolFnTy, PrintBoolFn, {V});
       }
       else if (Node.getType() == PrintStmt::Ident && nameMapInt.count(Node.getVar())) {
+        llvm :: errs() <<"heeeeeereeeeeeeeee"<< Node.getVar()<< "\n";
           V = Builder.CreateLoad(Int32Ty, nameMapInt[Node.getVar()]);
           CallInst *Call = Builder.CreateCall(PrintIntFnTy, PrintIntFn, {V});
       }
@@ -876,7 +877,6 @@ ns{
           V = Builder.CreateLoad(Int8PtrTy, nameMapString[Node.getVar()]);
           CallInst *Call = Builder.CreateCall(PrintStringFnTy, PrintStringFn, {V});
       } else if (Node.getType() == PrintStmt::Number){
-          llvm :: errs() <<"heeeeeereeeeeeeeee"<< Node.getVar()<< "\n";
           V = Builder.CreateLoad(Int32Ty, nameMapInt[Node.getVar()]);
           CallInst *Call = Builder.CreateCall(PrintIntFnTy, PrintIntFn, {V});
       } else if (Node.getType() == PrintStmt::Float){

@@ -1769,19 +1769,7 @@ PrintStmt *Parser::parsePrint()
         }
         case Token:: ident:{
             t = PrintStmt::Type::Ident;
-            if (expect(Token::l_bracket)){
-                goto _error;
-            }else{
-                Var = Tok.getText();
-                break;
-            }
-            advance();
-            //
             Var = Tok.getText();
-            if (expect(Token::r_bracket)){
-                goto _error;
-            }
-
             break;
         }
         default:{
