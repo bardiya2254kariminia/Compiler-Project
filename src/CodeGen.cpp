@@ -513,8 +513,29 @@ ns{
     {
       // Get the name of the variable being assigned.
       llvm::StringRef varName;
-      if (Node.getLeft()) {
-          varName = Node.getLeft()->getVal();
+      varName = Node.getLeft()->getVal();
+      // if (!nameMapInt.count(varName) && !nameMapBool.count(varName) && 
+      //   !nameMapFloat.count(varName) && !nameMapChar.count(varName) && 
+      //   !nameMapString.count(varName) && !nameMapArray.count(varName)) {
+      //   llvm::report_fatal_error("Undefined variable: " + varName);
+      // }
+      if (Node.getRightExpr())
+        Node.getRightExpr()->accept(*this);
+      else if (Node.getRightLogic())
+          Node.getRightLogic()->accept(*this);
+      Value *val = V;
+      if (nameMapInt.count(varName)) {
+          Builder.CreateStore(val, nameMapInt[varName]);
+      } else if (nameMapBool.count(varName)) {
+          Builder.CreateStore(val, nameMapBool[varName]);
+      } else if (nameMapFloat.count(varName)) {
+          Builder.CreateStore(val, nameMapFloat[varName]);
+      } else if (nameMapChar.count(varName)) {
+          Builder.CreateStore(val, nameMapChar[varName]);
+      } else if (nameMapString.count(varName)) {
+          Builder.CreateStore(val, nameMapString[varName]);
+      } else {
+          llvm::report_fatal_error("Undefined variable: " + varName);
       }
 
       // Check if this is an array access by looking at the variable name
@@ -551,55 +572,26 @@ ns{
           return;
       }
 
-      // Regular variable assignment
-      if (Node.getLeft()) {
-          Node.getLeft()->accept(*this);
-          Value *varVal = V;
+      // if (Node.getRightExpr())
+      //   Node.getRightExpr()->accept(*this);
+      // else if (Node.getRightLogic())
+      //     Node.getRightLogic()->accept(*this);
+      // Value *val = V;
 
-          if (Node.getRightExpr() == nullptr)
-              Node.getRightLogic()->accept(*this);        
-          else
-              Node.getRightExpr()->accept(*this);
-
-          Value *val = V;
-
-          switch (Node.getAssignKind())
-          {
-          case Assignment::Plus_assign:
-              val = Builder.CreateNSWAdd(varVal, val);
-              break;
-          case Assignment::Minus_assign:
-              val = Builder.CreateNSWSub(varVal, val);
-              break;
-          case Assignment::Star_assign:
-              val = Builder.CreateNSWMul(varVal, val);
-              break;
-          case Assignment::Slash_assign:
-              val = Builder.CreateSDiv(varVal, val);
-              break;
-          default:
-              break;
-          }
-
-          // Create a store instruction to assign the value to the variable.
-          if (isBool(varName))
-              Builder.CreateStore(val, nameMapBool[varName]);
-          else if (nameMapString.count(varName)) {
-              if (Node.getAssignKind() != Assignment::Assign) {
-                  llvm::report_fatal_error("Compound assignment not supported for strings");
-              }
-              Builder.CreateStore(val, nameMapString[varName]);
-              return;
-          } else if(nameMapInt.count(varName)) {
-              Builder.CreateStore(val, nameMapInt[varName]);
-          } else if(nameMapChar.count(varName)) {
-              Builder.CreateStore(val, nameMapChar[varName]);
-          } else if(nameMapFloat.count(varName)) {
-              Builder.CreateStore(val, nameMapFloat[varName]);
-          } else if (nameMapArray.count(varName)) {
-              llvm::report_fatal_error("Direct assignment to array variables not supported. Use element-wise assignment.");
-          }
-      }
+      // // Store directly without loading the LHS for simple assignment
+      // if (nameMapInt.count(varName)) {
+      //     Builder.CreateStore(val, nameMapInt[varName]);
+      // } else if (nameMapBool.count(varName)) {
+      //     Builder.CreateStore(val, nameMapBool[varName]);
+      // } else if (nameMapFloat.count(varName)) {
+      //     Builder.CreateStore(val, nameMapFloat[varName]);
+      // } else if (nameMapChar.count(varName)) {
+      //     Builder.CreateStore(val, nameMapChar[varName]);
+      // } else if (nameMapString.count(varName)) {
+      //     Builder.CreateStore(val, nameMapString[varName]);
+      // } else {
+      //     llvm::report_fatal_error("Undefined variable: " + varName);
+      // }
     };
 
     virtual void visit(Final &Node) override {

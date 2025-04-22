@@ -117,14 +117,14 @@ Program *Parser::parseProgram(){
             }
             Tok = prev_token;
             Lex.setBufferPtr(prev_buffer);
-            llvm::errs() << "hereeeee\n";
+            // llvm::errs() << "hereeeee\n";
             a_int = parseIntAssign();
             if (!Tok.is(Token::semicolon))
             {
                 goto _error;
             }
             if (a_int){
-                llvm::errs() << "get_value ident\n";
+                // llvm::errs() << "get_value ident\n";
                 data.push_back(a_int);
             }
             else
@@ -707,7 +707,14 @@ _error:
 Assignment *Parser::parseIntAssign()
 {
     // Try to parse array access first
+    Token base_int_tok = Tok;
+    const char * base_buffer = get_lex_buffer();
     AST *LHS = parseArrayAccess();
+    Tok = base_int_tok;
+    set_lex_buffer(base_buffer);
+
+    llvm::errs()<<"hold "<<Tok.getText()<<"\n";
+
     if (LHS) {
         // If we have an array access, check for assignment operators
         if (Tok.is(Token::assign))
@@ -762,58 +769,61 @@ Assignment *Parser::parseIntAssign()
             // If no assignment operator, return nullptr
             return nullptr;
         }
-    }
+    }else{
+        // If not an array access, try to parse a regular variable
+        llvm::errs()<<"before final "<<Tok.getText()<<"\n";
+        // Expr *F_expr = parseFinal();
+        llvm::errs()<<"after final "<<Tok.getText()<<"\n";
 
-    // If not an array access, try to parse a regular variable
-    Expr *F_expr = parseFinal();
-    if (!F_expr)
-        return nullptr;
+        // Cast the Expr* to Final* since we know parseFinal returns a Final*
+        Final *F = (Final *)(parseFinal());
+        if (F == nullptr)
+            return nullptr;
 
-    // Cast the Expr* to Final* since we know parseFinal returns a Final*
-    Final *F = static_cast<Final*>(F_expr);
-
-    Assignment::AssignKind AK;
-    if (Tok.is(Token::assign))
-    {
-        advance();
-        AK = Assignment::Assign;
+        Assignment::AssignKind AK;
+        if (Tok.is(Token::assign))
+        {
+            advance();
+            AK = Assignment::Assign;
+        }
+        else if (Tok.is(Token::plus_assign))
+        {
+            advance();
+            AK = Assignment::Plus_assign;
+        }
+        else if (Tok.is(Token::minus_assign))
+        {
+            advance();
+            AK = Assignment::Minus_assign;
+        }
+        else if (Tok.is(Token::star_assign))
+        {
+            advance();
+            AK = Assignment::Star_assign;
+        }
+        else if (Tok.is(Token::slash_assign))
+        {
+            advance();
+            AK = Assignment::Slash_assign;
+        }
+        else if (Tok.is(Token::plus_plus))
+        {
+            advance();
+            // Create a Final node with value "1" for the increment
+            Final *one = new Final(Final::Number, "1");
+            return new Assignment(F, one, Assignment::Plus_assign, nullptr);
+        }
+        else
+        {
+            return nullptr;
+        }
+        llvm::errs()<<"before expr "<<Tok.getText()<<"\n";
+        Expr *E = parseExpr();
+        llvm::errs()<<"after expr "<<E<<"\n";
+        if (!E)
+            return nullptr;
+        return new Assignment(F, E, AK, nullptr);
     }
-    else if (Tok.is(Token::plus_assign))
-    {
-        advance();
-        AK = Assignment::Plus_assign;
-    }
-    else if (Tok.is(Token::minus_assign))
-    {
-        advance();
-        AK = Assignment::Minus_assign;
-    }
-    else if (Tok.is(Token::star_assign))
-    {
-        advance();
-        AK = Assignment::Star_assign;
-    }
-    else if (Tok.is(Token::slash_assign))
-    {
-        advance();
-        AK = Assignment::Slash_assign;
-    }
-    else if (Tok.is(Token::plus_plus))
-    {
-        advance();
-        // Create a Final node with value "1" for the increment
-        Final *one = new Final(Final::Number, "1");
-        return new Assignment(F, one, Assignment::Plus_assign, nullptr);
-    }
-    else
-    {
-        return nullptr;
-    }
-
-    Expr *E = parseExpr();
-    if (!E)
-        return nullptr;
-    return new Assignment(F, E, AK, nullptr);
 }
 
 Assignment *Parser::parseFloatAssign()
@@ -1126,10 +1136,18 @@ Expr *Parser::parseFinal() {
     Expr *Res = nullptr;
     Token prev_tok = Tok;
     const char* prev_buffer = Lex.getBuffer();
+    // llvm::errs()<<"before arracc "<<Tok.getText()<<"\n";
+    Token hold_final  = Tok;
     Res = parseArrayAccess();
+    // advance();
+
+    llvm::errs()<<"after arracc "<<Tok.getText()<<"\n";
     if (Res) {
         return Res;
     }
+
+    Tok = prev_tok;
+    set_lex_buffer(prev_buffer);
 
     switch (Tok.getKind()) {
     case Token::number: {
@@ -1163,16 +1181,22 @@ Expr *Parser::parseFinal() {
         break;
     }
     case Token::ident: {
-        Res = new Final(Final::Ident, Tok.getText());
-        Token prev_tok = Tok;
-        const char* prev_buffer = Lex.getBuffer();
+        Token ident_prev_tok = Tok;
+        const char* ident_base_buffer= get_lex_buffer();
+        
+        // llvm::errs() <<"before parseunary "<<prev_tok.getText()<<"\n";
         Expr* u = parseUnary();
-        if(u)
+        if(u){
             return u;
+        }
         else {
-            Tok = prev_tok;
-            Lex.setBufferPtr(prev_buffer);
+            // llvm::errs() << ";sfnvb;ksfnvlksbn1111  "<<Tok.getText()<<"\n"; 
+            Tok = ident_prev_tok;
+            set_lex_buffer(ident_base_buffer);
+            llvm::errs() << "after modification  "<<Tok.getText()<<"\n"; 
+            Final * Res = new Final(Final::Ident, Tok.getText());
             advance();
+            return  Res;
         }
         break;
     }
@@ -1254,7 +1278,7 @@ Expr *Parser::parseArrayAccess() {
     advance();
     
     Expr *index = parseExpr();
-    // llvm::errs() << "passed the 3 part\n";
+    llvm::errs() <<Tok.getText()<<"------------"<< "\n";
     if (!index) {
         // llvm::errs() << "expression \n";
         goto _error;

@@ -22,6 +22,14 @@ class Parser
     void advance() { Lex.next(Tok);
      llvm::errs() << Tok.getKind() + 16 << " " << Tok.getText() << '\n';
     }
+
+    const char* get_lex_buffer(){
+        return Lex.getBuffer();
+    }
+
+    void set_lex_buffer(const char* hold){
+        Lex.setBufferPtr(hold);
+    }
     
 
     bool expect(Token::TokenKind Kind)
