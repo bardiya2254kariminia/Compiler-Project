@@ -1,2 +1,2 @@
-int a;
+array a = [1 , 2];
 print(1);

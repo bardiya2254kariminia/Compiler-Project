@@ -356,9 +356,12 @@ public:
 
   virtual void visit(PrintStmt &Node) override {
     // Check if identifier is in the scope
-    if (IntScope.find(Node.getVar()) == IntScope.end() && BoolScope.find(Node.getVar()) == BoolScope.end())
+    if (Node.getType() == PrintStmt::Ident &&IntScope.find(Node.getVar()) == IntScope.end() && 
+    BoolScope.find(Node.getVar()) == BoolScope.end() &&
+    FloatScope.find(Node.getVar()) == FloatScope.end() &&
+    FloatScope.find(Node.getVar()) == FloatScope.end()){
       error(Not, Node.getVar());
-    
+    }
   };
 
   virtual void visit(IfStmt &Node) override {

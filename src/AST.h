@@ -695,13 +695,35 @@ public:
 
 class PrintStmt : public Program
 {
+public:
+  enum Type
+  { 
+    Float,
+    Number,
+    Bool,
+    String,
+    Char,
+    Ident,
+    Float_ident,
+    Number_ident,
+    Bool_ident,
+    String_ident,
+    Char_ident,
+    
+  };
+
 private:
+  
   llvm::StringRef Var;
+  Type t;
+
   
 public:
-  PrintStmt(llvm::StringRef Var) : Var(Var) {}
+  PrintStmt(llvm::StringRef Var , Type t) : Var(Var) ,t(t){}
 
   llvm::StringRef getVar() { return Var; }
+
+  Type getType() { return t; }
 
   virtual void accept(ASTVisitor &V) override
   {

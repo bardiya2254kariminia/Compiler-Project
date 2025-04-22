@@ -857,25 +857,32 @@ ns{
     virtual void visit(PrintStmt &Node) override
     {
       // Visit the right-hand side of the assignment and get its value.
-      if (isBool(Node.getVar())) {
+      if (Node.getType() == PrintStmt::Ident && isBool(Node.getVar())) {
         V = Builder.CreateLoad(Int1Ty, nameMapBool[Node.getVar()]);
         CallInst *Call = Builder.CreateCall(PrintBoolFnTy, PrintBoolFn, {V});
       }
-      else if (nameMapInt.count(Node.getVar())) {
+      else if (Node.getType() == PrintStmt::Ident && nameMapInt.count(Node.getVar())) {
           V = Builder.CreateLoad(Int32Ty, nameMapInt[Node.getVar()]);
           CallInst *Call = Builder.CreateCall(PrintIntFnTy, PrintIntFn, {V});
       }
-      else if (nameMapFloat.count(Node.getVar())) {
+      else if (Node.getType() == PrintStmt::Ident && nameMapFloat.count(Node.getVar())) {
           V = Builder.CreateLoad(FloatTy, nameMapFloat[Node.getVar()]);
           CallInst *Call = Builder.CreateCall(PrintFloatFnTy, PrintFloatFn, {V});
       }
-      else if (nameMapChar.count(Node.getVar())) {
+      else if (Node.getType() == PrintStmt::Ident && nameMapChar.count(Node.getVar())) {
           V = Builder.CreateLoad(Int8Ty, nameMapChar[Node.getVar()]);
           CallInst *Call = Builder.CreateCall(PrintCharFnTy, PrintCharFn, {V});
-      }else if (nameMapString.count(Node.getVar())) {
+      }else if (Node.getType() == PrintStmt::Ident && nameMapString.count(Node.getVar())) {
           V = Builder.CreateLoad(Int8PtrTy, nameMapString[Node.getVar()]);
           CallInst *Call = Builder.CreateCall(PrintStringFnTy, PrintStringFn, {V});
-      } 
+      } else if (Node.getType() == PrintStmt::Number){
+          llvm :: errs() <<"heeeeeereeeeeeeeee"<< Node.getVar()<< "\n";
+          V = Builder.CreateLoad(Int32Ty, nameMapInt[Node.getVar()]);
+          CallInst *Call = Builder.CreateCall(PrintIntFnTy, PrintIntFn, {V});
+      } else if (Node.getType() == PrintStmt::Float){
+          V = Builder.CreateLoad(FloatTy, nameMapFloat[Node.getVar()]);
+          CallInst *Call = Builder.CreateCall(PrintFloatFnTy, PrintFloatFn, {V});
+      }
     };
 
     virtual void visit(WhileStmt &Node) override

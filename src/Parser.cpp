@@ -1746,6 +1746,7 @@ _error:
 PrintStmt *Parser::parsePrint()
 {
     llvm::StringRef Var;
+    PrintStmt::Type t;
     if (expect(Token::KW_print)){
         goto _error;
     }
@@ -1754,10 +1755,42 @@ PrintStmt *Parser::parsePrint()
         goto _error;
     }
     advance();
-    if (expect(Token::ident)){
-        goto _error;
+
+    switch(Tok.getKind()){
+        case Token:: number:{
+            t = PrintStmt::Type::Number;
+            Var = Tok.getText();
+            break;
+        }
+        case Token:: float_num:{
+            t = PrintStmt::Type::Float;
+            Var = Tok.getText();
+            break;
+        }
+        case Token:: ident:{
+            t = PrintStmt::Type::Ident;
+            if (expect(Token::l_bracket)){
+                goto _error;
+            }else{
+                Var = Tok.getText();
+                break;
+            }
+            advance();
+            //
+            Var = Tok.getText();
+            if (expect(Token::r_bracket)){
+                goto _error;
+            }
+
+            break;
+        }
+        default:{
+            goto _error;
+            break;
+        }
     }
-    Var = Tok.getText();
+
+    // Var = Tok.getText();
     advance();
     if (expect(Token::r_paren)){
         goto _error;
@@ -1766,7 +1799,7 @@ PrintStmt *Parser::parsePrint()
     if (expect(Token::semicolon)){
         goto _error;
     }
-    return new PrintStmt(Var);
+    return new PrintStmt(Var , t);
 
 _error:
     while (Tok.getKind() != Token::eoi)
